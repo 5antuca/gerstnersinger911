@@ -5,7 +5,7 @@ Command: npx gltfjsx@6.5.3 public/models/Porsche911.glb -o src/components/3d/Car
 
 import * as THREE from 'three'
 import React, { useLayoutEffect } from 'react'
-import { useLoader, useThree } from '@react-three/fiber'
+import { useLoader, useThree, GroupProps } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
 import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 
@@ -105,7 +105,7 @@ type GLTFResult = GLTF & {
   }
 }
 
-export function Model(props: JSX.IntrinsicElements['group']) {
+export function Model(props: GroupProps) {
   const gl = useThree((state) => state.gl)
   const gltf = useLoader(GLTFLoader, '/models/Porsche911.glb', (loader) => {
     const dracoLoader = new DRACOLoader()
@@ -127,13 +127,11 @@ export function Model(props: JSX.IntrinsicElements['group']) {
     // Pintura Exterior
     if (materials.paint) {
       materials.paint.color.set(paintColor)
+      // Reducimos un poco el metalness para evitar que los normal maps se exageren y causen artefactos
       materials.paint.clearcoat = 1
       materials.paint.clearcoatRoughness = 0.05
       materials.paint.roughness = 0.2
-      materials.paint.metalness = 0.7
-    }
-    if (materials.coat) {
-      materials.coat.color.set(paintColor)
+      materials.paint.metalness = 0.4 
     }
 
     // Llantas
@@ -144,12 +142,10 @@ export function Model(props: JSX.IntrinsicElements['group']) {
     }
 
     // Interior (Tapicería)
-    if (materials.black) {
-      materials.black.color.set(interiorColor)
-    }
-    if (materials.material_0) {
-      materials.material_0.color.set(interiorColor)
-    }
+    // NOTA: Hemos desactivado el tintado global de 'black' y 'material_0' porque 
+    // 'material_0' era el plano de sombra (tapaba la pantalla) y 'black' compartía
+    // material con los plásticos exteriores (paragolpes/limpiaparabrisas).
+    // Para el interior necesitamos identificar el nodo exacto de las butacas.
 
   }, [paintColor, rimStyle, interiorColor, materials])
 
