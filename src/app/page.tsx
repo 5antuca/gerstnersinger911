@@ -68,22 +68,25 @@ export default function Home() {
       {/* ── INTERIOR OVERLAY ── */}
       {activeTab === 'interior' && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-6 pointer-events-none">
-          {/* Image viewer */}
-          <div className="relative pointer-events-auto" style={{ width: 'min(90vw, 720px)', height: 'min(60vh, 540px)' }}>
+          {/* Image viewer — proporción 1:1 nativa */}
+          <div 
+            className="relative pointer-events-auto rounded-2xl overflow-hidden shadow-2xl"
+            style={{ width: 'min(55vh, 460px)', height: 'min(55vh, 460px)' }}
+          >
             {PRESET_INTERIORS.map((interior) => (
               <Image
                 key={interior.id}
                 src={interior.image}
                 alt={interior.name}
                 fill
-                sizes="720px"
-                className={`object-cover rounded-2xl shadow-2xl transition-opacity duration-700 ease-in-out ${
+                sizes="460px"
+                className={`object-cover transition-opacity duration-700 ease-in-out ${
                   interiorColor.id === interior.id ? 'opacity-100 z-10' : 'opacity-0 z-0'
                 }`}
                 style={{ position: 'absolute' }}
               />
             ))}
-            {/* subtle vignette on the image */}
+            {/* subtle border */}
             <div className="absolute inset-0 rounded-2xl ring-1 ring-white/10 pointer-events-none z-20" />
           </div>
 
