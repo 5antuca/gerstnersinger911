@@ -121,7 +121,7 @@ export default function Home() {
       )}
 
       {/* ── BOTTOM CONTROLS ── */}
-      <div className="absolute bottom-8 left-8 right-8 z-20 pointer-events-none flex gap-6 justify-start">
+      <div className="absolute bottom-8 left-8 right-8 z-20 pointer-events-none flex gap-6 justify-center">
         {/* Paint selector — General tab */}
         {activeTab === 'general' && (
           <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-6 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
