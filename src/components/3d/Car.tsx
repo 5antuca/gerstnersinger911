@@ -5,7 +5,7 @@ Command: npx gltfjsx@6.5.3 public/models/Porsche911.glb -o src/components/3d/Car
 
 import * as THREE from 'three'
 import React, { useLayoutEffect } from 'react'
-import { useLoader, useThree, GroupProps } from '@react-three/fiber'
+import { useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
 import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 
@@ -105,7 +105,7 @@ type GLTFResult = GLTF & {
   }
 }
 
-export function Model(props: GroupProps) {
+export function Model(props: any) {
   const gl = useThree((state) => state.gl)
   const gltf = useLoader(GLTFLoader, '/models/Porsche911.glb', (loader) => {
     const dracoLoader = new DRACOLoader()
@@ -116,7 +116,7 @@ export function Model(props: GroupProps) {
     ktx2Loader.setTranscoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/basis/')
     ktx2Loader.detectSupport(gl)
     loader.setKTX2Loader(ktx2Loader)
-  }) as GLTFResult
+  }) as unknown as GLTFResult
 
   const { nodes, materials } = gltf
   const paintColor = useConfiguratorStore((s) => s.paintColor)
