@@ -44,7 +44,7 @@ export function Scene() {
         {/* Environment sin blur → reflections nítidos como en la referencia */}
         <Environment
           preset="city"
-          environmentIntensity={0.8}
+          environmentIntensity={1.3}
           background={false}
           blur={0}
         />
