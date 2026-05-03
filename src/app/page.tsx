@@ -1,9 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { Scene } from '@/components/3d/Scene'
 import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS } from '@/store/useConfiguratorStore'
 import Image from 'next/image'
+
+function Loader() {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div
+          className="w-8 h-8 rounded-full border-2 border-white/10 border-t-white/70"
+          style={{ animation: 'spin 1s linear infinite' }}
+        />
+        <span className="text-white/30 text-xs tracking-[0.25em] uppercase">Cargando</span>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  )
+}
 
 type Tab = 'general' | 'interior' | 'llantas' | 'escape'
 
@@ -25,7 +40,9 @@ export default function Home() {
     >
       {/* 3D Canvas - always behind */}
       <div className={`absolute inset-0 z-0 transition-all duration-500 ${activeTab !== 'general' && activeTab !== 'llantas' ? 'blur-sm brightness-50' : ''}`}>
-        <Scene />
+        <Suspense fallback={<Loader />}>
+          <Scene />
+        </Suspense>
       </div>
 
       {/* ── HEADER ── */}

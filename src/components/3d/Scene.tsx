@@ -16,7 +16,7 @@ export function Scene() {
       <ambientLight intensity={0.6} />
       <directionalLight position={[10, 10, 5]} intensity={0.8} />
       {/* Luz de relleno frontal sutil — ilumina la cara del auto que ve la cámara */}
-      <directionalLight position={[0, 2, -8]} intensity={0.35} />
+      <directionalLight position={[0, 2, -8]} intensity={0.6} />
       
       <Suspense fallback={null}>
         <Car position={[0, -0.117, 0]} />
