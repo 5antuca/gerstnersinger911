@@ -65,7 +65,7 @@ export default function Home() {
       <LoadingScreen />
 
       {/* 3D Canvas - always behind */}
-      <div className={`absolute inset-0 z-0 transition-all duration-500 ${activeTab !== 'general' && activeTab !== 'llantas' ? 'blur-sm brightness-50' : ''}`}>
+      <div className={`absolute inset-0 z-0 transition-all duration-[1200ms] ${isLoaded ? 'opacity-100' : 'opacity-0'} ${activeTab !== 'general' && activeTab !== 'llantas' ? 'blur-sm brightness-50' : ''}`}>
         <Suspense fallback={null}>
           <Scene />
         </Suspense>
