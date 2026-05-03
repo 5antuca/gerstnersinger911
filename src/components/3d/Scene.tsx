@@ -21,7 +21,7 @@ export function Scene() {
       <ambientLight intensity={1.2} />
 
       {/* Luz key desde arriba-derecha (simula softbox de estudio) */}
-      <directionalLight position={[8, 10, 4]} intensity={1.4} />
+      <directionalLight position={[8, 10, 4]} intensity={0.8} />
 
       {/* Luz de relleno frontal — ilumina la cara del auto hacia la cámara */}
       <directionalLight position={[0, 3, -10]} intensity={0.9} />
