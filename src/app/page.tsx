@@ -1,57 +1,140 @@
 'use client'
 
+import { useState } from 'react'
 import { Scene } from '@/components/3d/Scene'
 import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS } from '@/store/useConfiguratorStore'
 import Image from 'next/image'
 
+type Tab = 'general' | 'interior' | 'llantas' | 'escape'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'general', label: 'General' },
+  { id: 'interior', label: 'Interior' },
+  { id: 'llantas', label: 'Llantas' },
+  { id: 'escape', label: 'Escape' },
+]
+
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<Tab>('general')
   const { paintColor, setPaintColor, rimStyle, setRimStyle, interiorColor, setInteriorColor } = useConfiguratorStore()
 
   return (
-    <main 
-      className="w-screen h-screen text-white overflow-y-auto overflow-x-hidden font-sans selection:bg-white/20 snap-y snap-mandatory"
+    <main
+      className="w-screen h-screen text-white overflow-hidden font-sans selection:bg-white/20 relative"
       style={{ background: 'radial-gradient(ellipse at top, #565963 0%, #2e3138 40%, #181a1f 100%)' }}
     >
-      
+      {/* 3D Canvas - always behind */}
+      <div className={`absolute inset-0 z-0 transition-all duration-500 ${activeTab !== 'general' && activeTab !== 'llantas' ? 'blur-sm brightness-50' : ''}`}>
+        <Scene />
+      </div>
 
-
-      {/* SECTION 1: 3D EXTERIOR */}
-      <section className="relative w-full h-screen snap-start shrink-0 flex flex-col">
-        
-        {/* Header - Glassmorphism */}
-        <header className="absolute top-0 left-0 right-0 p-6 z-20 pointer-events-none flex justify-between items-start">
-          <div>
-            <Image 
-              src="/img/logopage.webp" 
-              alt="Gerstner Werks Logo" 
-              width={150} 
-              height={50} 
-              className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] opacity-95 object-contain"
-              priority
-            />
-          </div>
-        </header>
-
-        {/* 3D Canvas wrapper */}
-        <div className="absolute inset-0 z-0">
-          <Scene />
+      {/* ── HEADER ── */}
+      <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-8 pt-6 pb-0 pointer-events-none">
+        {/* Logo */}
+        <div className="pointer-events-auto">
+          <Image
+            src="/img/logopage.webp"
+            alt="Gerstner Werks Logo"
+            width={130}
+            height={44}
+            className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] opacity-95 object-contain"
+            priority
+          />
         </div>
 
-        {/* Bottom Controls / Stats - Glassmorphism */}
-        <div className="absolute bottom-8 left-8 right-8 z-20 pointer-events-none flex gap-6">
-          
-          {/* Paint Selector */}
-          <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-6 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500 flex-1 max-w-sm">
-            <h3 className="text-sm font-semibold text-white/60 mb-4 tracking-wider uppercase text-[10px]">Pintura Exterior</h3>
+        {/* Navigation Tabs */}
+        <nav className="pointer-events-auto">
+          <div className="bg-black/30 backdrop-blur-xl border border-white/10 rounded-full p-1 flex gap-1">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-5 py-2 rounded-full text-sm font-medium tracking-wide transition-all duration-300 ${
+                  activeTab === tab.id
+                    ? 'bg-white text-black shadow-md'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        {/* Spacer to balance logo */}
+        <div className="w-[130px]" />
+      </header>
+
+      {/* ── INTERIOR OVERLAY ── */}
+      {activeTab === 'interior' && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-6 pointer-events-none">
+          {/* Image viewer */}
+          <div className="relative pointer-events-auto" style={{ width: 'min(90vw, 720px)', height: 'min(60vh, 540px)' }}>
+            {PRESET_INTERIORS.map((interior) => (
+              <Image
+                key={interior.id}
+                src={interior.image}
+                alt={interior.name}
+                fill
+                sizes="720px"
+                className={`object-cover rounded-2xl shadow-2xl transition-opacity duration-700 ease-in-out ${
+                  interiorColor.id === interior.id ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                }`}
+                style={{ position: 'absolute' }}
+              />
+            ))}
+            {/* subtle vignette on the image */}
+            <div className="absolute inset-0 rounded-2xl ring-1 ring-white/10 pointer-events-none z-20" />
+          </div>
+
+          {/* Interior options pill */}
+          <div className="pointer-events-auto bg-black/50 backdrop-blur-2xl border border-white/10 rounded-full p-1.5 flex gap-1">
+            {PRESET_INTERIORS.map((interior) => (
+              <button
+                key={interior.id}
+                onClick={() => setInteriorColor(interior)}
+                className={`px-5 py-2 rounded-full text-sm font-medium flex items-center gap-2.5 transition-all duration-300 ${
+                  interiorColor.id === interior.id
+                    ? 'bg-white text-black shadow-md'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <span
+                  className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0"
+                  style={{ backgroundColor: interior.hex }}
+                />
+                {interior.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── ESCAPE PLACEHOLDER ── */}
+      {activeTab === 'escape' && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center">
+          <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-10 text-center">
+            <p className="text-white/40 text-sm tracking-widest uppercase">Próximamente</p>
+            <p className="text-white text-xl font-semibold mt-2">Configuración de Escape</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── BOTTOM CONTROLS ── */}
+      <div className="absolute bottom-8 left-8 right-8 z-20 pointer-events-none flex gap-6 justify-start">
+        {/* Paint selector — General tab */}
+        {activeTab === 'general' && (
+          <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-6 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
+            <h3 className="text-[10px] font-semibold text-white/50 mb-4 tracking-widest uppercase">Pintura Exterior</h3>
             <div className="flex flex-wrap gap-3">
               {PRESET_COLORS.map((color) => (
                 <button
                   key={color.id}
                   onClick={() => setPaintColor(color.hex)}
                   className={`w-10 h-10 rounded-full cursor-pointer transition-all duration-300 ${
-                    paintColor === color.hex 
-                      ? 'border-2 border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.2)]' 
-                      : 'border-2 border-white/10 hover:border-white/40'
+                    paintColor === color.hex
+                      ? 'scale-110 ring-2 ring-white shadow-[0_0_15px_rgba(255,255,255,0.25)]'
+                      : 'ring-2 ring-white/10 hover:ring-white/40'
                   }`}
                   style={{ backgroundColor: color.hex }}
                   title={color.name}
@@ -60,18 +143,20 @@ export default function Home() {
               ))}
             </div>
           </div>
+        )}
 
-          {/* Rims Selector */}
-          <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-6 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500 flex-1 max-w-sm">
-            <h3 className="text-sm font-semibold text-white/60 mb-4 tracking-wider uppercase text-[10px]">Diseño de Llantas</h3>
+        {/* Rims selector — Llantas tab */}
+        {activeTab === 'llantas' && (
+          <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-6 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
+            <h3 className="text-[10px] font-semibold text-white/50 mb-4 tracking-widest uppercase">Diseño de Llantas</h3>
             <div className="flex flex-wrap gap-3">
               {PRESET_RIMS.map((rim) => (
                 <button
                   key={rim.id}
                   onClick={() => setRimStyle(rim)}
                   className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-300 ${
-                    rimStyle.id === rim.id 
-                      ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.2)] scale-105' 
+                    rimStyle.id === rim.id
+                      ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.2)] scale-105'
                       : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 hover:text-white'
                   }`}
                 >
@@ -80,59 +165,8 @@ export default function Home() {
               ))}
             </div>
           </div>
-
-        </div>
-        
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-12 right-12 z-20 flex flex-col items-center gap-2 animate-bounce opacity-70 pointer-events-none hidden md:flex">
-          <span className="text-xs uppercase tracking-[0.2em]">Interior</span>
-          <div className="w-[1px] h-12 bg-gradient-to-b from-white/80 to-transparent"></div>
-        </div>
-
-      </section>
-
-      {/* SECTION 2: 2D INTERIOR */}
-      <section className="relative w-full h-screen snap-start shrink-0 bg-[#0a0a0a] overflow-hidden">
-        
-        {/* Crossfade Images */}
-        <div className="absolute inset-0 z-0 flex items-center justify-center">
-          {PRESET_INTERIORS.map((interior) => (
-            <Image
-              key={interior.id}
-              src={interior.image}
-              alt={interior.name}
-              fill
-              className={`object-cover transition-opacity duration-1000 ease-in-out ${
-                interiorColor.id === interior.id ? 'opacity-100 z-10' : 'opacity-0 z-0'
-              }`}
-              priority
-            />
-          ))}
-          {/* Vignette Overlay */}
-          <div className="absolute inset-0 z-20 pointer-events-none bg-[radial-gradient(ellipse_at_center,_transparent_50%,_rgba(0,0,0,0.8)_100%)]"></div>
-        </div>
-
-        {/* Interior Selector */}
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-30">
-          <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/10 rounded-full p-2 shadow-2xl flex gap-2">
-            {PRESET_INTERIORS.map((interior) => (
-              <button
-                key={interior.id}
-                onClick={() => setInteriorColor(interior)}
-                className={`px-6 py-3 rounded-full text-sm font-semibold cursor-pointer transition-all duration-500 flex items-center gap-3 ${
-                  interiorColor.id === interior.id 
-                    ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)] scale-100' 
-                    : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white scale-95'
-                }`}
-              >
-                <span className="w-4 h-4 rounded-full shadow-inner border border-black/20" style={{ backgroundColor: interior.hex }}></span>
-                {interior.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-      </section>
+        )}
+      </div>
     </main>
   )
 }
