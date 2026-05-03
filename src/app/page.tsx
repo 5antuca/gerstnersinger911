@@ -1,21 +1,42 @@
 'use client'
 
 import { useState, Suspense } from 'react'
+import { useProgress } from '@react-three/drei'
 import { Scene } from '@/components/3d/Scene'
 import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS } from '@/store/useConfiguratorStore'
 import Image from 'next/image'
 
-function Loader() {
+function LoadingScreen() {
+  const { progress } = useProgress()
+  const done = progress >= 99.9
+
   return (
-    <div className="absolute inset-0 flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
+    <div
+      className="absolute inset-0 z-50 flex flex-col items-center justify-center transition-opacity duration-700 pointer-events-none"
+      style={{ opacity: done ? 0 : 1 }}
+    >
+      {/* Logo */}
+      <Image
+        src="/img/logopage.webp"
+        alt="Gerstner Werks"
+        width={120}
+        height={40}
+        className="object-contain opacity-60 mb-10"
+        priority
+      />
+
+      {/* Thin progress bar */}
+      <div className="w-40 h-[1px] bg-white/10 rounded-full overflow-hidden">
         <div
-          className="w-8 h-8 rounded-full border-2 border-white/10 border-t-white/70"
-          style={{ animation: 'spin 1s linear infinite' }}
+          className="h-full bg-white/70 rounded-full transition-all duration-300 ease-out"
+          style={{ width: `${progress}%` }}
         />
-        <span className="text-white/30 text-xs tracking-[0.25em] uppercase">Cargando</span>
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* Percentage */}
+      <span className="mt-4 text-white/25 text-[10px] tracking-[0.3em] uppercase tabular-nums">
+        {Math.round(progress)}%
+      </span>
     </div>
   )
 }
@@ -32,21 +53,26 @@ const TABS: { id: Tab; label: string }[] = [
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('general')
   const { paintColor, setPaintColor, rimStyle, setRimStyle, interiorColor, setInteriorColor } = useConfiguratorStore()
+  const { progress } = useProgress()
+  const isLoaded = progress >= 100
 
   return (
     <main
       className="w-screen h-screen text-white overflow-hidden font-sans selection:bg-white/20 relative"
       style={{ background: 'radial-gradient(ellipse at top, #565963 0%, #2e3138 40%, #181a1f 100%)' }}
     >
+      {/* Loading Screen — usa useProgress de drei para el progreso real del GLB */}
+      <LoadingScreen />
+
       {/* 3D Canvas - always behind */}
       <div className={`absolute inset-0 z-0 transition-all duration-500 ${activeTab !== 'general' && activeTab !== 'llantas' ? 'blur-sm brightness-50' : ''}`}>
-        <Suspense fallback={<Loader />}>
+        <Suspense fallback={null}>
           <Scene />
         </Suspense>
       </div>
 
       {/* ── HEADER ── */}
-      <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-8 pt-6 pb-0 pointer-events-none">
+      <header className={`absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-8 pt-6 pb-0 pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
         {/* Logo */}
         <div className="pointer-events-auto">
           <Image
@@ -141,7 +167,7 @@ export default function Home() {
       )}
 
       {/* ── BOTTOM CONTROLS ── */}
-      <div className="absolute bottom-8 left-8 right-8 z-20 pointer-events-none flex gap-6 justify-center">
+      <div className={`absolute bottom-8 left-8 right-8 z-20 pointer-events-none flex gap-6 justify-center transition-all duration-700 delay-500 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
         {/* Paint selector — General tab */}
         {activeTab === 'general' && (
           <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-6 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
