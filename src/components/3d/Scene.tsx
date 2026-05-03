@@ -8,31 +8,31 @@ import { Model as Car } from './Car'
 export function Scene() {
   return (
     <Canvas
-      camera={{ position: [4, 1.5, -4], fov: 45 }}
+      camera={{ position: [5, 1.8, -5], fov: 33 }}
       dpr={[1, 2]} // Support for high-DPI screens
-      gl={{ antialias: true, toneMappingExposure: 1.2 }}
+      gl={{ antialias: true, toneMappingExposure: 1.0 }}
     >
-      <color attach="background" args={['#050505']} />
       
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[10, 10, 5]} intensity={1} />
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[10, 10, 5]} intensity={0.8} />
       
       <Suspense fallback={null}>
-        <Car />
+        <Car position={[0, -0.117, 0]} />
 
         <ContactShadows 
           resolution={1024} 
           scale={10} 
           blur={2} 
-          opacity={0.5} 
+          opacity={0.8} 
           far={5} 
           color="#000000"
         />
 
         <Environment 
-          files="/env/MR_INT-005_WhiteNeons_NAD1K.hdr" 
+          preset="city"
+          environmentIntensity={1.2}
           background={false}
-          blur={0}
+          blur={0.8}
         />
       </Suspense>
 
@@ -43,7 +43,7 @@ export function Scene() {
         maxPolarAngle={Math.PI / 2 - 0.05} // Prevent camera from going below ground
         minDistance={3}
         maxDistance={8}
-        target={[0, 0.5, 0]} // Enfocar al centro del auto
+        target={[0, 0.2, 0]} // Mirar un poco más abajo para subir el auto en pantalla
         makeDefault
       />
     </Canvas>

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 export const PRESET_COLORS = [
+  { id: 'night-blue', hex: '#0a1c3a', name: 'Night Blue' },
   { id: 'guards-red', hex: '#dc2626', name: 'Guards Red' },
   { id: 'obsidian-black', hex: '#111111', name: 'Obsidian Black' },
   { id: 'chalk-grey', hex: '#d6d3d1', name: 'Chalk Grey' },
@@ -15,9 +16,10 @@ export const PRESET_RIMS = [
 ]
 
 export const PRESET_INTERIORS = [
-  { id: 'black', hex: '#1a1a1a', name: 'Black Leather' },
-  { id: 'camel', hex: '#c19a6b', name: 'Camel Leather' },
-  { id: 'bordeaux', hex: '#722f37', name: 'Bordeaux Red' },
+  { id: 'camel-woven', hex: '#c19a6b', name: 'Camel Woven', image: '/img/interiors/camel-woven.jpg' },
+  { id: 'green-woven', hex: '#234a36', name: 'Green Woven', image: '/img/interiors/green-woven.jpg' },
+  { id: 'black-houndstooth', hex: '#1a1a1a', name: 'Black Houndstooth', image: '/img/interiors/black-houndstooth.jpg' },
+  { id: 'brown-plaid', hex: '#5c3a21', name: 'Brown Plaid', image: '/img/interiors/brown-plaid.jpg' },
 ]
 
 interface ConfiguratorState {
@@ -25,8 +27,8 @@ interface ConfiguratorState {
   setPaintColor: (color: string) => void;
   rimStyle: typeof PRESET_RIMS[0];
   setRimStyle: (rim: typeof PRESET_RIMS[0]) => void;
-  interiorColor: string;
-  setInteriorColor: (color: string) => void;
+  interiorColor: typeof PRESET_INTERIORS[0];
+  setInteriorColor: (interior: typeof PRESET_INTERIORS[0]) => void;
 }
 
 export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
@@ -34,6 +36,6 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   setPaintColor: (color) => set({ paintColor: color }),
   rimStyle: PRESET_RIMS[0],
   setRimStyle: (rim) => set({ rimStyle: rim }),
-  interiorColor: PRESET_INTERIORS[0].hex,
-  setInteriorColor: (color) => set({ interiorColor: color }),
+  interiorColor: PRESET_INTERIORS[0],
+  setInteriorColor: (interior) => set({ interiorColor: interior }),
 }))

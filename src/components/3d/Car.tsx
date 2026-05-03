@@ -128,11 +128,16 @@ export function Model(props: any) {
     // Pintura Exterior
     if (materials.paint) {
       materials.paint.color.set(paintColor)
-      // Reducimos un poco el metalness para evitar que los normal maps se exageren y causen artefactos
-      materials.paint.clearcoat = 1
-      materials.paint.clearcoatRoughness = 0.05
-      materials.paint.roughness = 0.2
-      materials.paint.metalness = 0.4 
+      // Hemos removido las sobreescrituras de clearcoat, metalness y roughness 
+      // para que el modelo use sus texturas PBR originales y evitemos las arrugas
+    }
+
+    // Ocultar la sombra precocinada (baked shadow) que viene con el modelo original
+    // ya que estamos usando ContactShadows de Drei que es dinámico y más realista.
+    if (materials.material_0) {
+      materials.material_0.visible = false
+      materials.material_0.transparent = true
+      materials.material_0.opacity = 0
     }
 
     // Llantas
