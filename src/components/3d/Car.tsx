@@ -21,8 +21,11 @@ const SCALE = 0.0254 // modelo en pulgadas → metros
 // Nombres de material reales del GLB del Singer
 const PAINT_MAT = 'Paint_ext'
 const RIM_MATS = ['Fuchs_1', 'Fuchs_2', 'Fuchs_cap']
-// Las ruedas definen el piso real (ignora planos de sombra/geometría que cuelgue debajo)
-const TIRE_MATS = ['Tire_extrude', 'Tire_rough', 'Tire_base']
+// El piso lo definen las ruedas de calle. Material Tire_base = meshes de
+// neumático limpios y separados por rueda. (Tire_extrude/Tire_rough están
+// soldados en mega-meshes de la optimización en Max → su bbox es inservible,
+// llega a -27in y hacía flotar el auto ~0.6m.)
+const FLOOR_MATS = ['Tire_base']
 
 export function Model(props: any) {
   const gl = useThree((state) => state.gl)
@@ -68,26 +71,30 @@ export function Model(props: any) {
     const full = new THREE.Box3().setFromObject(rig)
     const center = full.getCenter(new THREE.Vector3())
 
-    // bbox solo de las ruedas → define el piso (y=0)
-    const tires = new THREE.Box3()
-    let hasTires = false
+    // Fondo de cada rueda de calle (un valor por mesh Tire_base). Usamos la
+    // MEDIANA para ignorar outliers: la rueda de auxilio interna (al centro,
+    // más baja) y cualquier mesh raro. Las 4 ruedas de calle están niveladas.
+    const wheelBottoms: number[] = []
     rig.traverse((o) => {
       if (o instanceof THREE.Mesh) {
         const mats = Array.isArray(o.material) ? o.material : [o.material]
-        if (mats.some((m) => m && TIRE_MATS.includes(m.name))) {
-          tires.union(new THREE.Box3().setFromObject(o))
-          hasTires = true
+        if (mats.some((m) => m && FLOOR_MATS.includes(m.name))) {
+          wheelBottoms.push(new THREE.Box3().setFromObject(o).min.y)
         }
       }
     })
-    const floorY = hasTires ? tires.min.y : full.min.y
+    let floorY = full.min.y // fallback
+    if (wheelBottoms.length) {
+      wheelBottoms.sort((a, b) => a - b)
+      floorY = wheelBottoms[Math.floor(wheelBottoms.length / 2)] // mediana
+    }
 
     rig.position.x = -center.x // centrar en X
     rig.position.y = -floorY // apoyar ruedas sobre y=0
     rig.position.z = -center.z // centrar en Z
 
     // TEMP debug (sacar al confirmar grounding): leer en consola del navegador
-    console.info('[Car] grounding', { floorY, fullMinY: full.min.y, hasTires })
+    console.info('[Car] grounding', { floorY, fullMinY: full.min.y, wheels: wheelBottoms.length })
   }, [scene])
 
   // Pintura exterior + llantas dinámicas desde el store
