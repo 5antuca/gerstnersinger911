@@ -30,7 +30,7 @@ export function Scene() {
       <directionalLight position={[-6, 4, 2]} intensity={0.4} />
 
       <Suspense fallback={null}>
-        <Car position={[0, -0.117, 0]} />
+        <Car />
 
         <ContactShadows
           resolution={1024}
@@ -53,11 +53,18 @@ export function Scene() {
       <OrbitControls
         enablePan={false}
         enableZoom={true}
+        // Inercia/damping → controles suaves y pesados como la referencia Porsche
+        enableDamping
+        dampingFactor={0.04}
+        rotateSpeed={0.45}
+        // Rotación ociosa muy lenta (se reanuda al soltar el mouse)
+        autoRotate
+        autoRotateSpeed={0.35}
         minPolarAngle={Math.PI / 6}
         maxPolarAngle={Math.PI / 2 - 0.05}
         minDistance={3}
         maxDistance={8}
-        target={[0, 0.2, 0]}
+        target={[0, 0.45, 0]}
         makeDefault
       />
     </Canvas>
