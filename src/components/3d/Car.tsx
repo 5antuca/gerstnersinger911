@@ -10,7 +10,7 @@
 */
 
 import * as THREE from 'three'
-import { useLayoutEffect, useMemo } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
 import { useConfiguratorStore } from '@/store/useConfiguratorStore'
@@ -36,12 +36,12 @@ export function Model(props: any) {
   }) as unknown as GLTF
 
   const scene = gltf.scene
+  const rigRef = useRef<THREE.Group>(null)
   const paintColor = useConfiguratorStore((s) => s.paintColor)
   const rimStyle = useConfiguratorStore((s) => s.rimStyle)
 
-  // Indexar materiales por nombre + calcular el offset para centrar y apoyar
-  // el auto en el piso (robusto al origen interno del modelo).
-  const { materials, offset } = useMemo(() => {
+  // Indexar materiales por nombre (una sola vez)
+  const materials = useMemo(() => {
     const map: Record<string, THREE.Material> = {}
     scene.traverse((o) => {
       if (o instanceof THREE.Mesh) {
@@ -49,14 +49,23 @@ export function Model(props: any) {
         for (const m of mats) if (m && m.name) map[m.name] = m
       }
     })
-    const box = new THREE.Box3().setFromObject(scene)
+    return map
+  }, [scene])
+
+  // Centrar + apoyar el auto en el piso DESPUÉS de montar, midiendo el
+  // bounding box ya escalado y con las matrices de mundo finales (robusto
+  // al origen interno del modelo). El grupo lleva la escala; acá fijamos su
+  // posición imperativamente (no se pasa por prop para que no la pise React).
+  useLayoutEffect(() => {
+    const rig = rigRef.current
+    if (!rig) return
+    rig.position.set(0, 0, 0)
+    rig.updateWorldMatrix(true, true)
+    const box = new THREE.Box3().setFromObject(rig)
     const center = box.getCenter(new THREE.Vector3())
-    const off = new THREE.Vector3(
-      -center.x * SCALE, // centrar en X
-      -box.min.y * SCALE, // apoyar sobre y=0
-      -center.z * SCALE, // centrar en Z
-    )
-    return { materials: map, offset: off }
+    rig.position.x = -center.x // centrar en X
+    rig.position.y = -box.min.y // apoyar sobre y=0
+    rig.position.z = -center.z // centrar en Z
   }, [scene])
 
   // Pintura exterior + llantas dinámicas desde el store
@@ -76,7 +85,7 @@ export function Model(props: any) {
 
   return (
     <group {...props} dispose={null}>
-      <group position={offset} scale={SCALE}>
+      <group ref={rigRef} scale={SCALE}>
         <primitive object={scene} />
       </group>
     </group>
