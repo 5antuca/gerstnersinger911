@@ -92,9 +92,6 @@ export function Model(props: any) {
     rig.position.x = -center.x // centrar en X
     rig.position.y = -floorY // apoyar ruedas sobre y=0
     rig.position.z = -center.z // centrar en Z
-
-    // TEMP debug (sacar al confirmar grounding): leer en consola del navegador
-    console.info('[Car] grounding', { floorY, fullMinY: full.min.y, wheels: wheelBottoms.length })
   }, [scene])
 
   // Pintura exterior + llantas dinámicas desde el store
