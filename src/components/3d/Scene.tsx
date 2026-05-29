@@ -1,26 +1,42 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { Environment, OrbitControls, ContactShadows } from '@react-three/drei'
-import { Suspense } from 'react'
+import {
+  Environment,
+  OrbitControls,
+  ContactShadows,
+  PerformanceMonitor,
+} from '@react-three/drei'
+import { Suspense, useState } from 'react'
 import { Model as Car } from './Car'
 import * as THREE from 'three'
 
 // Escena cinematográfica (Fase 3) — 100% model-agnostic: cualquier modelo que
 // se cargue hereda esta iluminación de estudio, cámara fotográfica y piso.
 export function Scene() {
+  // DPR adaptativo para fluidez en web: arranca en 1.25 y el PerformanceMonitor
+  // lo baja a 1 si caen los FPS o lo sube a 1.5 si sobra. En retina, dpr 2
+  // renderiza 4× píxeles → es lo que más traba; capar acá da 60fps.
+  const [dpr, setDpr] = useState(1.25)
+
   return (
     <Canvas
       // Cámara fotográfica: focal larga (~fov 24 ≈ 85mm), ángulo bajo, poca
       // distorsión. Menos "orbital 3D", más foto automotriz.
       camera={{ position: [4.8, 1.15, -5.6], fov: 24 }}
-      dpr={[1, 2]}
+      dpr={dpr}
       gl={{
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
         toneMappingExposure: 1.05,
+        powerPreference: 'high-performance',
       }}
     >
+      <PerformanceMonitor
+        onDecline={() => setDpr(1)}
+        onIncline={() => setDpr(1.5)}
+      />
+
       <color attach="background" args={['#15171a']} />
 
       {/* Iluminación cinematográfica: key fuerte y definida + relleno bajo +
@@ -34,10 +50,12 @@ export function Scene() {
       <Suspense fallback={null}>
         <Car />
 
-        {/* Piso: contacto físico — sombra marcada cerca de las ruedas +
-            reflexión MUY leve + el color de fondo da el gradiente. Ancla el auto. */}
+        {/* Piso: contacto físico. El auto está QUIETO (solo orbita la cámara),
+            así que la sombra se calcula UNA sola vez (frames=1) → no recomputa por
+            frame = gran ahorro de performance. */}
         <ContactShadows
-          resolution={2048}
+          resolution={1024}
+          frames={1}
           scale={16}
           blur={2.6}
           opacity={0.9}
@@ -68,7 +86,7 @@ export function Scene() {
         autoRotateSpeed={0.3}
         minPolarAngle={Math.PI / 5}
         maxPolarAngle={Math.PI / 2 - 0.02}
-        minDistance={5}
+        minDistance={2.4}
         maxDistance={12}
         target={[0, 0.55, 0]}
         makeDefault
