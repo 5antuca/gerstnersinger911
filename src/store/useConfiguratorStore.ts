@@ -10,9 +10,9 @@ export const PRESET_COLORS = [
 ]
 
 export const PRESET_RIMS = [
-  { id: 'silver', hex: '#e5e7eb', name: 'Classic Silver', metalness: 0.8, roughness: 0.2 },
-  { id: 'black', hex: '#171717', name: 'Satin Black', metalness: 0.5, roughness: 0.5 },
-  { id: 'gold', hex: '#d4af37', name: 'Aurum Gold', metalness: 0.7, roughness: 0.3 },
+  { id: 'silver', hex: '#c8ccd0', name: 'Classic Silver', metalness: 0.9, roughness: 0.42 },
+  { id: 'black', hex: '#141414', name: 'Anodized Black', metalness: 0.85, roughness: 0.4 },
+  { id: 'gold', hex: '#d4af37', name: 'Aurum Gold', metalness: 0.8, roughness: 0.4 },
 ]
 
 export const PRESET_INTERIORS = [

@@ -14,20 +14,20 @@ export function Scene() {
       gl={{
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.6,
+        toneMappingExposure: 1.0,
       }}
     >
-      {/* Luz ambiente más fuerte para elevar el tono base */}
-      <ambientLight intensity={1.2} />
+      {/* Luz ambiente suave: el GLB nuevo trae PBR real, no hace falta forzar el tono */}
+      <ambientLight intensity={0.5} />
 
       {/* Luz key desde arriba-derecha (simula softbox de estudio) */}
-      <directionalLight position={[8, 10, 4]} intensity={0.8} />
+      <directionalLight position={[8, 10, 4]} intensity={0.6} />
 
       {/* Luz de relleno frontal — ilumina la cara del auto hacia la cámara */}
-      <directionalLight position={[0, 3, -10]} intensity={0.9} />
+      <directionalLight position={[0, 3, -10]} intensity={0.5} />
 
       {/* Luz de contorno suave desde la izquierda */}
-      <directionalLight position={[-6, 4, 2]} intensity={0.4} />
+      <directionalLight position={[-6, 4, 2]} intensity={0.3} />
 
       <Suspense fallback={null}>
         <Car />
@@ -44,7 +44,7 @@ export function Scene() {
         {/* Environment sin blur → reflections nítidos como en la referencia */}
         <Environment
           preset="city"
-          environmentIntensity={1.3}
+          environmentIntensity={0.65}
           background={false}
           blur={0}
         />

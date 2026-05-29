@@ -10,13 +10,13 @@
 */
 
 import * as THREE from 'three'
-import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import { useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
 import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 
-const MODEL_URL = '/models/PorscheSinger.glb'
-const SCALE = 0.0254 // modelo en pulgadas → metros
+const MODEL_URL = '/models/SingerClean.glb'
+const SCALE = 1.0 // pack Singer original ya viene en metros (~4.9m de largo)
 
 // Nombres de material reales del GLB del Singer
 const PAINT_MAT = 'Paint_ext'
@@ -31,49 +31,95 @@ const FLOOR_MATS = ['Tire_base']
 // autorea PBR) → se veían claros y planos. Acá les damos metalness real y un
 // roughness por tipo (cromo casi espejo, aluminio satinado, escape matt).
 // color opcional = neutralizar tintes placeholder obviamente mal autoreados.
+// roughness más altos que antes: el environment "city" es brillante y los
+// metales se veían como cromo blanco. Subiendo roughness leen como acero/alu
+// cepillado (gris), no espejo. color gris neutro donde el GLB traía base blanca.
 const METAL_MATS: Record<string, { metalness: number; roughness: number; color?: string }> = {
-  // cromados / espejo
-  Chrome: { metalness: 1, roughness: 0.08, color: '#eaeaea' },
-  Mirror: { metalness: 1, roughness: 0.05, color: '#e8e8e8' },
-  Fuel_oil_caps: { metalness: 1, roughness: 0.18 },
-  // aluminio / acero satinado
-  Alu_ext: { metalness: 1, roughness: 0.3 },
-  Alu_int: { metalness: 1, roughness: 0.35 },
-  Metal_ext_rough: { metalness: 1, roughness: 0.35 },
-  Wiper_metal: { metalness: 1, roughness: 0.35 },
-  Bolt_wheel: { metalness: 1, roughness: 0.3 },
-  Brake_disc: { metalness: 1, roughness: 0.35 },
-  Valve_metal: { metalness: 1, roughness: 0.3 },
-  Momo_silver: { metalness: 1, roughness: 0.3 },
-  Momo_bolts: { metalness: 1, roughness: 0.4 },
-  Momo_black_metal: { metalness: 1, roughness: 0.4 },
-  Speaker_mesh: { metalness: 1, roughness: 0.5 },
-  Footwell_plate: { metalness: 1, roughness: 0.4 },
+  // cromados / espejo (se mantienen brillantes, son cromo)
+  Chrome: { metalness: 1, roughness: 0.14, color: '#d8d8d8' },
+  Mirror: { metalness: 1, roughness: 0.08, color: '#dcdcdc' },
+  Fuel_oil_caps: { metalness: 1, roughness: 0.25, color: '#cccccc' }, // tapas oil/fuel en metal
+  // aluminio / acero satinado (más mate → gris, no blanco)
+  Alu_ext: { metalness: 1, roughness: 0.52, color: '#9a9a9a' },
+  Alu_int: { metalness: 1, roughness: 0.52, color: '#9a9a9a' },
+  Metal_ext_rough: { metalness: 1, roughness: 0.55, color: '#a0a0a0' },
+  Wiper_metal: { metalness: 1, roughness: 0.5, color: '#8f8f8f' },
+  Bolt_wheel: { metalness: 1, roughness: 0.45 },
+  Brake_disc: { metalness: 1, roughness: 0.5, color: '#8a8a8a' },
+  Valve_metal: { metalness: 1, roughness: 0.45 },
+  Momo_silver: { metalness: 1, roughness: 0.45 },
+  Momo_bolts: { metalness: 1, roughness: 0.5 },
+  Momo_black_metal: { metalness: 1, roughness: 0.5 },
+  Speaker_mesh: { metalness: 1, roughness: 0.6 },
+  Footwell_plate: { metalness: 0.3, roughness: 0.6, color: '#1c1c1c' },
   // oro (emblemas)
-  Emblem_gold: { metalness: 1, roughness: 0.2 },
-  Emblem_gold_bump: { metalness: 1, roughness: 0.3 },
-  Emblem_gold_normal: { metalness: 1, roughness: 0.3 },
-  // escape mate
-  Exhaust_matt: { metalness: 1, roughness: 0.55 },
+  Emblem_gold: { metalness: 1, roughness: 0.28 },
+  Emblem_gold_bump: { metalness: 1, roughness: 0.35 },
+  Emblem_gold_normal: { metalness: 1, roughness: 0.35 },
+  // salidas de escape: acero cepillado (pulido se quemaba a blanco con el env)
+  Exhaust_matt: { metalness: 1, roughness: 0.42, color: '#8f8f8f' },
+  // pinza de freno: PINTURA roja (no metal). El material nonodes exportaba con
+  // metalness=1 → quedaba rojo metálico oscuro. Forzamos metalness 0.
+  Brake_caliper: { metalness: 0, roughness: 0.4, color: '#b81818' },
+  // cromos de las luces: venían en roughness 0 (espejo perfecto) → de lejos
+  // aliasing especular = cuadrados negros en los marcos. Subimos roughness.
+  Lamp_chrome: { metalness: 1, roughness: 0.3, color: '#cfcfcf' },
+  Headlamp_bulb: { metalness: 1, roughness: 0.3, color: '#cfcfcf' },
 }
 
 // Acabado de materiales NO metálicos (no necesita UV ni texturas): solo
 // roughness para que cuero/alfombra/plástico dejen de verse como plástico
 // brillante. El color de cada uno se ajusta después contra las fotos de ref.
 const FINISH_MATS: Record<string, number> = {
-  Leather_BK_rough: 0.72,
-  Leather_BR_rough: 0.72,
-  Leather_BG_rough: 0.72,
-  Leather_BK_glossy: 0.42,
-  Leather_BR_glossy: 0.42,
-  Carpet_in: 0.95,
-  Plastic_int_matt: 0.85,
-  Plastic_button_matt: 0.8,
-  Momo_leather: 0.7,
-  Momo_rubber: 0.9,
-  Int_glossy: 0.14, // piano black brilloso
-  Pedal_top: 0.6,
-  Seatbelt: 0.85,
+  // interiores: subidos para matar el brillo de cuero/plástico bajo el env
+  Leather_BK_rough: 0.82,
+  Leather_BR_rough: 0.82,
+  Leather_BG_rough: 0.82,
+  Leather_BK_glossy: 0.55,
+  Leather_BR_glossy: 0.55,
+  Leather_WH_glossy: 0.55,
+  Carpet_in: 0.97,
+  Headlining: 0.95,
+  Plastic_int_matt: 0.9,
+  Plastic_button_matt: 0.85,
+  Recaro_paint: 0.6,
+  Momo_leather: 0.78,
+  Momo_rubber: 0.92,
+  Int_glossy: 0.3, // piano black: menos espejo
+  Pedal_top: 0.65,
+  Seatbelt: 0.88,
+  // gomas de neumático: casi mate. El pack las traía en 0.5 (plásticas).
+  Rubber: 0.97,
+  Tire_rough: 0.97,
+  Tire_base: 0.95,
+  Tire_extrude: 0.95,
+  Wiper_rubber: 0.92,
+  Plastic_ext_matt: 0.9,
+}
+
+// Color forzado (además del roughness). Las alfombras del pack venían claras
+// (Carpet_out casi blanco, Carpet_in gris) → las llevamos a negro.
+// Vidrios de FAROS (no las ventanas): se les saca la transmission para que no
+// desaparezcan a distancia. Glass_ext (ventanas) se deja como está.
+const LENS_GLASS = new Set(['Headlamp_glass', 'Glass_red', 'Glass_orange', 'Glass_parking_light'])
+
+const COLOR_MATS: Record<string, string> = {
+  Carpet_in: '#141414',
+  Carpet_out: '#141414',
+  // gomas en negro real (algunas instancias venían claras/brillosas)
+  Rubber: '#0d0d0d',
+  Tire_rough: '#0d0d0d',
+  Tire_base: '#0d0d0d',
+  Tire_extrude: '#0d0d0d',
+  // materiales DIFFUSE del pack que salen BLANCOS al exportar a glTF (el exporter
+  // pierde el color de los BSDF_DIFFUSE). Les forzamos su color oscuro real.
+  // Plastic_int_matt = PISO interno bajo butacas/pedaleras (era el blanco).
+  Plastic_int_matt: '#161616',
+  Plastic_gauge_bck: '#0e0e0e',
+  Plastic_button_matt: '#121212',
+  Radio_screen: '#0a0a0a',
+  Headlining: '#3a3a3a',
+  Carpet: '#141414',
 }
 
 export function Model(props: any) {
@@ -91,6 +137,7 @@ export function Model(props: any) {
 
   const scene = gltf.scene
   const rigRef = useRef<THREE.Group>(null)
+  const capTexRef = useRef<THREE.CanvasTexture | null>(null)
   const paintColor = useConfiguratorStore((s) => s.paintColor)
   const rimStyle = useConfiguratorStore((s) => s.rimStyle)
 
@@ -104,24 +151,27 @@ export function Model(props: any) {
       metalness: 0.0, // pintura sólida (no metálica) → reflejos blancos del clearcoat
       roughness: 0.42, // base semi-mate; el brillo lo da el clearcoat
       clearcoat: 1.0, // capa transparente reflectante (laca)
-      clearcoatRoughness: 0.06, // laca casi espejo → reflejos nítidos
-      envMapIntensity: 1.25,
+      clearcoatRoughness: 0.1, // laca brillante pero sin reflejos quemados
+      envMapIntensity: 1.0,
     })
     m.name = 'Paint_ext_dynamic'
     return m
   }, [])
 
-  // Indexar materiales por nombre (una sola vez)
-  const materials = useMemo(() => {
-    const map: Record<string, THREE.Material> = {}
-    scene.traverse((o) => {
-      if (o instanceof THREE.Mesh) {
+  // El GLB tiene materiales DUPLICADOS por nombre (varias instancias del mismo
+  // material en distintos meshes). Por eso no alcanza con indexar uno por nombre:
+  // hay que recorrer TODOS los slots y aplicar el override a cada instancia, si
+  // no quedan piezas sin tocar (gomas/alfombras/relojes blancos).
+  const applyToMaterials = useCallback(
+    (fn: (m: THREE.MeshStandardMaterial) => void) => {
+      scene.traverse((o) => {
+        if (!(o instanceof THREE.Mesh)) return
         const mats = Array.isArray(o.material) ? o.material : [o.material]
-        for (const m of mats) if (m && m.name) map[m.name] = m
-      }
-    })
-    return map
-  }, [scene])
+        for (const m of mats) if (m) fn(m as THREE.MeshStandardMaterial)
+      })
+    },
+    [scene]
+  )
 
   // Reemplazar el material de pintura en todos los meshes que lo usan
   // (incluye meshes multi-material: se reemplaza solo el slot Paint_ext).
@@ -135,6 +185,32 @@ export function Model(props: any) {
       }
     })
   }, [scene, paintMaterial])
+
+  // Filtrado de texturas: anisotrópico + trilineal. Sin esto, de lejos el motor
+  // usa mipmaps de baja resolución y las superficies con normal map / detalle
+  // (faros, acrílico, metales) se ven en "cuadrados" / glitchean. Esto lo arregla.
+  useLayoutEffect(() => {
+    const maxAniso = gl.capabilities.getMaxAnisotropy()
+    const seen = new Set<THREE.Texture>()
+    const keys = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap'] as const
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return
+      const mats = Array.isArray(o.material) ? o.material : [o.material]
+      for (const m of mats) {
+        for (const k of keys) {
+          const tex = (m as Record<string, unknown>)[k] as THREE.Texture | null
+          if (tex && !seen.has(tex)) {
+            seen.add(tex)
+            tex.anisotropy = maxAniso
+            tex.minFilter = THREE.LinearMipmapLinearFilter
+            tex.magFilter = THREE.LinearFilter
+            tex.generateMipmaps = true
+            tex.needsUpdate = true
+          }
+        }
+      }
+    })
+  }, [scene, gl])
 
   // Centrar + apoyar el auto en el piso DESPUÉS de montar, con las matrices
   // de mundo ya finales. El piso se define por las RUEDAS (no por el bbox
@@ -177,32 +253,125 @@ export function Model(props: any) {
   useLayoutEffect(() => {
     paintMaterial.color.set(paintColor)
 
-    for (const name of RIM_MATS) {
-      const m = materials[name] as THREE.MeshStandardMaterial | undefined
-      if (m) {
+    // Fuchs dos-tonos (ref real): cara de rayos en el color elegido, labio/pulido
+    // (Fuchs_1) siempre plata brillante. Fuchs_2 = cara, Fuchs_cap = centro.
+    applyToMaterials((m) => {
+      if (m.name === 'Fuchs_2') {
         m.color.set(rimStyle.hex)
         m.metalness = rimStyle.metalness
         m.roughness = rimStyle.roughness
+      } else if (m.name === 'Fuchs_cap') {
+        m.color.set(rimStyle.hex)
+        m.metalness = rimStyle.metalness
+        m.roughness = Math.min(rimStyle.roughness + 0.1, 1)
+      } else if (m.name === 'Fuchs_1') {
+        m.color.set('#cfd2d6') // plata pulida (labio Fuchs)
+        m.metalness = 1
+        m.roughness = 0.14
       }
-    }
-  }, [paintColor, rimStyle, materials, paintMaterial])
+    })
+  }, [paintColor, rimStyle, applyToMaterials, paintMaterial])
 
-  // Convertir los materiales metálicos a PBR real (una vez, al cargar).
+  // Overrides estáticos de material (una vez, al cargar). Recorre TODAS las
+  // instancias para cubrir los materiales duplicados por nombre del GLB.
   useLayoutEffect(() => {
-    for (const [name, cfg] of Object.entries(METAL_MATS)) {
-      const m = materials[name] as THREE.MeshStandardMaterial | undefined
-      if (!m) continue
-      m.metalness = cfg.metalness
-      m.roughness = cfg.roughness
-      if (cfg.color) m.color.set(cfg.color)
-      m.envMapIntensity = 1.3 // reflejos del environment más presentes
-    }
-    // Acabado mate de cuero/alfombra/plástico (no metales)
-    for (const [name, roughness] of Object.entries(FINISH_MATS)) {
-      const m = materials[name] as THREE.MeshStandardMaterial | undefined
-      if (m) m.roughness = roughness
-    }
-  }, [materials])
+    applyToMaterials((m) => {
+      const cfg = METAL_MATS[m.name]
+      if (cfg) {
+        m.metalness = cfg.metalness
+        m.roughness = cfg.roughness
+        if (cfg.color) m.color.set(cfg.color)
+        m.envMapIntensity = 1.0
+      }
+      if (m.name in FINISH_MATS) m.roughness = FINISH_MATS[m.name]
+      if (m.name in COLOR_MATS) m.color.set(COLOR_MATS[m.name])
+      // Vidrio de relojes: venía blanco opaco (base 0.8) tapando el dial.
+      // Lo hacemos vidrio oscuro casi transparente → se ve el reloj negro debajo.
+      if (m.name === 'Gauge_glass') {
+        m.color.set('#0a0a0a')
+        m.metalness = 0
+        m.roughness = 0.08
+        m.transparent = true
+        m.opacity = 0.2
+        m.needsUpdate = true
+      }
+      // Espejo retrovisor: reflejo. Con el env atenuado (0.65) reflejaba oscuro
+      // → se veía negro. Le subimos envMapIntensity para que espeje brillante.
+      if (m.name === 'Mirror') {
+        m.color.set('#eaeaea')
+        m.metalness = 1
+        m.roughness = 0.05
+        m.envMapIntensity = 3.0
+      }
+      // Vidrios de faros: usaban transmission (refracción) + alpha baja → de lejos
+      // la transmission no se renderiza y los cristales DESAPARECEN. Les sacamos
+      // la transmission (transparencia simple estable) y subimos piso de opacidad.
+      if (LENS_GLASS.has(m.name)) {
+        const pm = m as THREE.MeshPhysicalMaterial
+        if ('transmission' in pm) pm.transmission = 0
+        pm.metalness = 0
+        pm.roughness = 0.06
+        pm.transparent = true
+        pm.opacity = Math.max(pm.opacity ?? 1, 0.6)
+        pm.depthWrite = false
+        pm.needsUpdate = true
+      }
+      // Acrílico del spoiler (Plexi_bubbles): material procedural transparente con
+      // textura de huecos → de lejos glitchea (verde en cuadrados). Lo limpiamos a
+      // un plexi ahumado translúcido liso (sin textura) → deja de buguear.
+      if (m.name === 'Plexi_bubbles') {
+        m.map = null
+        m.normalMap = null
+        m.roughnessMap = null
+        m.metalnessMap = null
+        if (m.emissive) m.emissive.set('#000000')
+        m.color.set('#1c1f1c')
+        m.metalness = 0
+        m.roughness = 0.12
+        m.transparent = true
+        m.opacity = 0.6
+        m.depthWrite = false
+        m.needsUpdate = true
+      }
+      // Tapas oil/fuel: metal con letras CALADAS en relieve. Sacamos la textura de
+      // color (tapón negro) y la metallicRoughness, pero potenciamos el normalMap
+      // (que trae el relieve de las letras) para que se vean grabadas en el metal.
+      if (m.name === 'Fuel_oil_caps') {
+        // La textura del pack es fondo NEGRO con letras BLANCAS → usada directa
+        // el tapón sale negro. La INVERTIMOS (fondo→claro=metal, letras→gris) y
+        // la usamos de color: tapón metal con letras apenas más oscuras + relieve.
+        if (!capTexRef.current && m.map && (m.map as THREE.Texture).image) {
+          const img = (m.map as THREE.Texture).image as HTMLImageElement
+          const cv = document.createElement('canvas')
+          cv.width = img.width
+          cv.height = img.height
+          const cx = cv.getContext('2d')!
+          cx.drawImage(img, 0, 0)
+          const data = cx.getImageData(0, 0, cv.width, cv.height)
+          const px = data.data
+          for (let i = 0; i < px.length; i += 4) {
+            // fondo negro(0)→~235 (metal claro); letras blancas(255)→~120 (gris)
+            const out = 235 - px[i] * 0.45
+            px[i] = px[i + 1] = px[i + 2] = out
+          }
+          cx.putImageData(data, 0, 0)
+          const t = new THREE.CanvasTexture(cv)
+          t.flipY = (m.map as THREE.Texture).flipY
+          t.colorSpace = (m.map as THREE.Texture).colorSpace
+          t.needsUpdate = true
+          capTexRef.current = t
+        }
+        if (capTexRef.current) m.map = capTexRef.current
+        m.metalnessMap = null
+        m.roughnessMap = null
+        m.color.set('#ffffff') // el tono lo da la textura invertida
+        m.metalness = 1
+        m.roughness = 0.42
+        if (m.normalMap) m.normalScale = new THREE.Vector2(2.5, 2.5)
+        m.needsUpdate = true
+      }
+    })
+  }, [applyToMaterials])
 
   return (
     <group {...props} dispose={null}>
