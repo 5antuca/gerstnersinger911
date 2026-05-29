@@ -42,10 +42,10 @@ export function Scene() {
       {/* Iluminación cinematográfica: key fuerte y definida + relleno bajo +
           ambient mínimo → contraste agresivo y zonas oscuras reales, como la
           fotografía automotriz. */}
-      <ambientLight intensity={0.22} />
+      <ambientLight intensity={0.12} />
       <directionalLight position={[6, 9, 3]} intensity={1.5} />
-      <directionalLight position={[-7, 3.5, -4]} intensity={0.35} />
-      <spotLight position={[-2, 7, -7]} angle={0.6} penumbra={1} intensity={0.7} />
+      <directionalLight position={[-7, 3.5, -4]} intensity={0.22} />
+      <spotLight position={[-2, 7, -7]} angle={0.6} penumbra={1} intensity={0.6} />
 
       <Suspense fallback={null}>
         <Car />
@@ -69,7 +69,7 @@ export function Scene() {
             360°. backgroundIntensity bajo → ambiente, no se quema. */}
         <Environment
           files="/env/MR_INT-005_WhiteNeons_NAD1K.hdr"
-          environmentIntensity={1.1}
+          environmentIntensity={0.95}
           background
           backgroundBlurriness={0.6}
           backgroundIntensity={0.28}

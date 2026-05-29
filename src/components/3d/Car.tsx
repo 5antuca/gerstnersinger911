@@ -265,14 +265,17 @@ export function Model(props: any) {
         m.color.set(rimStyle.hex) // caras de radios + labio/aro exterior
         m.metalness = rimStyle.metalness
         m.roughness = rimStyle.roughness
+        m.envMapIntensity = 0.8 // un poco menos iluminada (sin recolorear)
       } else if (m.name === 'Fuchs_2') {
-        m.color.set('#6f7275') // valles = aluminio satinado más oscuro
+        m.color.set('#9a9da0') // valles = aluminio satinado (mismo tono, NO oscuro)
         m.metalness = 1
-        m.roughness = 0.58
+        m.roughness = 0.55
+        m.envMapIntensity = 0.8
       } else if (m.name === 'Fuchs_cap') {
-        m.color.set('#94979a') // tapacubos central = aluminio satinado
+        m.color.set('#aeb1b4') // tapacubos central = aluminio satinado
         m.metalness = 1
         m.roughness = 0.5
+        m.envMapIntensity = 0.8
       }
     })
   }, [paintColor, rimStyle, applyToMaterials, paintMaterial])
