@@ -266,11 +266,11 @@ export function Model(props: any) {
         m.metalness = rimStyle.metalness
         m.roughness = rimStyle.roughness
       } else if (m.name === 'Fuchs_2') {
-        m.color.set('#9a9da0') // valles = aluminio satinado (un toque más oscuro)
+        m.color.set('#6f7275') // valles = aluminio satinado más oscuro
         m.metalness = 1
-        m.roughness = 0.55
+        m.roughness = 0.58
       } else if (m.name === 'Fuchs_cap') {
-        m.color.set('#aeb1b4') // tapacubos central = aluminio satinado
+        m.color.set('#94979a') // tapacubos central = aluminio satinado
         m.metalness = 1
         m.roughness = 0.5
       }
@@ -327,13 +327,17 @@ export function Model(props: any) {
         pm.transparent = true
         // más transparentes: el cristal de óptica casi clear, los guiños/lentes
         // de color un poco más presentes para que el tinte se lea.
-        pm.opacity = m.name === 'Headlamp_glass' ? 0.35 : 0.4
-        // cristal de óptica: tinte oscuro (vidrio clear-oscuro, no blanco) +
-        // reflejo nítido (no blown). La curvatura deforma el reflejo (look real).
         if (m.name === 'Headlamp_glass') {
-          pm.color.set('#0c0f13')
-          pm.envMapIntensity = 1.5
+          // óptica: vidrio CLEAR (no oscuro) → se ve el reflector cromado adentro
+          pm.color.set('#1e2228')
+          pm.opacity = 0.16
+          pm.envMapIntensity = 1.7 // reflejo nítido en la curvatura
+        } else if (m.name === 'Glass_orange') {
+          // guiño delantero: ámbar más translúcido y reflejante
+          pm.opacity = 0.3
+          pm.envMapIntensity = 1.7
         } else {
+          pm.opacity = 0.4
           pm.envMapIntensity = 1.0
         }
         pm.depthWrite = false

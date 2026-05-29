@@ -13,7 +13,7 @@ export const PRESET_RIMS = [
   // color de las CARAS de los radios + el labio/aro exterior. Los VALLES van en
   // negro satinado fijo. Default = aluminio satinado (radios claros + valles
   // negros = look Fuchs Singer de la referencia).
-  { id: 'silver', hex: '#b9bcc0', name: 'Satin Silver', metalness: 1, roughness: 0.52 },
+  { id: 'silver', hex: '#9a9da1', name: 'Satin Silver', metalness: 1, roughness: 0.54 },
   { id: 'black', hex: '#1b1b1b', name: 'Satin Black', metalness: 0.35, roughness: 0.55 },
   { id: 'gold', hex: '#c9a84a', name: 'Aurum Gold', metalness: 0.75, roughness: 0.5 },
 ]
