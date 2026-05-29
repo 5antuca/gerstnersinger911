@@ -27,6 +27,36 @@ const RIM_MATS = ['Fuchs_1', 'Fuchs_2', 'Fuchs_cap']
 // llega a -27in y hacía flotar el auto ~0.6m.)
 const FLOOR_MATS = ['Tire_base']
 
+// Materiales metálicos. El GLB los exportó todos con metalness=0 (SketchUp no
+// autorea PBR) → se veían claros y planos. Acá les damos metalness real y un
+// roughness por tipo (cromo casi espejo, aluminio satinado, escape matt).
+// color opcional = neutralizar tintes placeholder obviamente mal autoreados.
+const METAL_MATS: Record<string, { metalness: number; roughness: number; color?: string }> = {
+  // cromados / espejo
+  Chrome: { metalness: 1, roughness: 0.08, color: '#eaeaea' },
+  Mirror: { metalness: 1, roughness: 0.05, color: '#e8e8e8' },
+  Fuel_oil_caps: { metalness: 1, roughness: 0.18 },
+  // aluminio / acero satinado
+  Alu_ext: { metalness: 1, roughness: 0.3 },
+  Alu_int: { metalness: 1, roughness: 0.35 },
+  Metal_ext_rough: { metalness: 1, roughness: 0.35 },
+  Wiper_metal: { metalness: 1, roughness: 0.35 },
+  Bolt_wheel: { metalness: 1, roughness: 0.3 },
+  Brake_disc: { metalness: 1, roughness: 0.35 },
+  Valve_metal: { metalness: 1, roughness: 0.3 },
+  Momo_silver: { metalness: 1, roughness: 0.3 },
+  Momo_bolts: { metalness: 1, roughness: 0.4 },
+  Momo_black_metal: { metalness: 1, roughness: 0.4 },
+  Speaker_mesh: { metalness: 1, roughness: 0.5 },
+  Footwell_plate: { metalness: 1, roughness: 0.4 },
+  // oro (emblemas)
+  Emblem_gold: { metalness: 1, roughness: 0.2 },
+  Emblem_gold_bump: { metalness: 1, roughness: 0.3 },
+  Emblem_gold_normal: { metalness: 1, roughness: 0.3 },
+  // escape mate
+  Exhaust_matt: { metalness: 1, roughness: 0.55 },
+}
+
 export function Model(props: any) {
   const gl = useThree((state) => state.gl)
   const gltf = useLoader(GLTFLoader, MODEL_URL, (loader) => {
@@ -137,6 +167,18 @@ export function Model(props: any) {
       }
     }
   }, [paintColor, rimStyle, materials, paintMaterial])
+
+  // Convertir los materiales metálicos a PBR real (una vez, al cargar).
+  useLayoutEffect(() => {
+    for (const [name, cfg] of Object.entries(METAL_MATS)) {
+      const m = materials[name] as THREE.MeshStandardMaterial | undefined
+      if (!m) continue
+      m.metalness = cfg.metalness
+      m.roughness = cfg.roughness
+      if (cfg.color) m.color.set(cfg.color)
+      m.envMapIntensity = 1.3 // reflejos del environment más presentes
+    }
+  }, [materials])
 
   return (
     <group {...props} dispose={null}>
