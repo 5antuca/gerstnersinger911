@@ -45,7 +45,9 @@ const METAL_MATS: Record<string, { metalness: number; roughness: number; color?:
   Metal_ext_rough: { metalness: 1, roughness: 0.55, color: '#a0a0a0' },
   Wiper_metal: { metalness: 1, roughness: 0.5, color: '#8f8f8f' },
   Bolt_wheel: { metalness: 1, roughness: 0.45 },
-  Brake_disc: { metalness: 1, roughness: 0.5, color: '#8a8a8a' },
+  // disco de freno: metal OPACO/mate oscuro (parte interna de la rueda) → da el
+  // contraste sin pintar la llanta de negro. La pinza (Brake_caliper) sigue roja.
+  Brake_disc: { metalness: 0.45, roughness: 0.8, color: '#525252' },
   Valve_metal: { metalness: 1, roughness: 0.45 },
   Momo_silver: { metalness: 1, roughness: 0.45 },
   Momo_bolts: { metalness: 1, roughness: 0.5 },
@@ -88,11 +90,11 @@ const FINISH_MATS: Record<string, number> = {
   Int_glossy: 0.3, // piano black: menos espejo
   Pedal_top: 0.65,
   Seatbelt: 0.88,
-  // gomas de neumático: casi mate. El pack las traía en 0.5 (plásticas).
-  Rubber: 0.97,
-  Tire_rough: 0.97,
-  Tire_base: 0.95,
-  Tire_extrude: 0.95,
+  // gomas de neumático: roughness alto pero NO total (la goma real refleja algo).
+  Rubber: 0.82,
+  Tire_rough: 0.8,
+  Tire_base: 0.85,
+  Tire_extrude: 0.85,
   Wiper_rubber: 0.92,
   Plastic_ext_matt: 0.9,
 }
@@ -106,11 +108,12 @@ const LENS_GLASS = new Set(['Headlamp_glass', 'Glass_red', 'Glass_orange', 'Glas
 const COLOR_MATS: Record<string, string> = {
   Carpet_in: '#141414',
   Carpet_out: '#141414',
-  // gomas en negro real (algunas instancias venían claras/brillosas)
-  Rubber: '#0d0d0d',
-  Tire_rough: '#0d0d0d',
-  Tire_base: '#0d0d0d',
-  Tire_extrude: '#0d0d0d',
+  // gomas: charcoal (no negro puro) → la goma real no es negro absoluto, refleja
+  // un poco. Con el normal map del neumático da micro-bump/realismo.
+  Rubber: '#1b1b1b',
+  Tire_rough: '#1b1b1b',
+  Tire_base: '#1b1b1b',
+  Tire_extrude: '#1b1b1b',
   // materiales DIFFUSE del pack que salen BLANCOS al exportar a glTF (el exporter
   // pierde el color de los BSDF_DIFFUSE). Les forzamos su color oscuro real.
   // Plastic_int_matt = PISO interno bajo butacas/pedaleras (era el blanco).
@@ -148,11 +151,11 @@ export function Model(props: any) {
   const paintMaterial = useMemo(() => {
     const m = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color('#0a1c3a'),
-      metalness: 0.0, // pintura sólida (no metálica) → reflejos blancos del clearcoat
-      roughness: 0.42, // base semi-mate; el brillo lo da el clearcoat
-      clearcoat: 1.0, // capa transparente reflectante (laca)
-      clearcoatRoughness: 0.1, // laca brillante pero sin reflejos quemados
-      envMapIntensity: 1.0,
+      metalness: 0.85, // pintura METÁLICA (flake) — como el auto real: profundo
+      roughness: 0.42, // brillo del flake bajo la laca
+      clearcoat: 1.0, // laca
+      clearcoatRoughness: 0.035, // laca profunda → reflejos largos/nítidos (wet look)
+      envMapIntensity: 1.7, // reflejos de estudio marcados (deep gloss)
     })
     m.name = 'Paint_ext_dynamic'
     return m
@@ -253,21 +256,23 @@ export function Model(props: any) {
   useLayoutEffect(() => {
     paintMaterial.color.set(paintColor)
 
-    // Fuchs dos-tonos (ref real): cara de rayos en el color elegido, labio/pulido
-    // (Fuchs_1) siempre plata brillante. Fuchs_2 = cara, Fuchs_cap = centro.
+    // Fuchs estilo Singer (ref real): las CARAS de los radios + el LABIO/aro
+    // exterior (Fuchs_1) van en aluminio satinado = color del selector. Los
+    // VALLES/recovecos (Fuchs_2) van en NEGRO satinado fijo. El CENTRO (cap) en
+    // aluminio satinado. Acabado satinado (roughness alto) → sin cromo.
     applyToMaterials((m) => {
-      if (m.name === 'Fuchs_2') {
-        m.color.set(rimStyle.hex)
+      if (m.name === 'Fuchs_1') {
+        m.color.set(rimStyle.hex) // caras de radios + labio/aro exterior
         m.metalness = rimStyle.metalness
         m.roughness = rimStyle.roughness
-      } else if (m.name === 'Fuchs_cap') {
-        m.color.set(rimStyle.hex)
-        m.metalness = rimStyle.metalness
-        m.roughness = Math.min(rimStyle.roughness + 0.1, 1)
-      } else if (m.name === 'Fuchs_1') {
-        m.color.set('#cfd2d6') // plata pulida (labio Fuchs)
+      } else if (m.name === 'Fuchs_2') {
+        m.color.set('#9a9da0') // valles = aluminio satinado (un toque más oscuro)
         m.metalness = 1
-        m.roughness = 0.14
+        m.roughness = 0.55
+      } else if (m.name === 'Fuchs_cap') {
+        m.color.set('#aeb1b4') // tapacubos central = aluminio satinado
+        m.metalness = 1
+        m.roughness = 0.5
       }
     })
   }, [paintColor, rimStyle, applyToMaterials, paintMaterial])
@@ -281,7 +286,7 @@ export function Model(props: any) {
         m.metalness = cfg.metalness
         m.roughness = cfg.roughness
         if (cfg.color) m.color.set(cfg.color)
-        m.envMapIntensity = 1.0
+        m.envMapIntensity = 1.3 // reflejos de estudio más largos en metales/chrome
       }
       if (m.name in FINISH_MATS) m.roughness = FINISH_MATS[m.name]
       if (m.name in COLOR_MATS) m.color.set(COLOR_MATS[m.name])
@@ -303,6 +308,14 @@ export function Model(props: any) {
         m.roughness = 0.05
         m.envMapIntensity = 3.0
       }
+      // Aro/reflector del faro: z-fighting con el parachoques en la esquina. Lo
+      // tiramos hacia la cámara para que el faro quede por encima del paragolpe.
+      if (m.name === 'Lamp_chrome') {
+        m.polygonOffset = true
+        m.polygonOffsetFactor = -8
+        m.polygonOffsetUnits = -8
+        m.needsUpdate = true
+      }
       // Vidrios de faros: usaban transmission (refracción) + alpha baja → de lejos
       // la transmission no se renderiza y los cristales DESAPARECEN. Les sacamos
       // la transmission (transparencia simple estable) y subimos piso de opacidad.
@@ -312,7 +325,31 @@ export function Model(props: any) {
         pm.metalness = 0
         pm.roughness = 0.06
         pm.transparent = true
-        pm.opacity = Math.max(pm.opacity ?? 1, 0.6)
+        // más transparentes: el cristal de óptica casi clear, los guiños/lentes
+        // de color un poco más presentes para que el tinte se lea.
+        pm.opacity = m.name === 'Headlamp_glass' ? 0.25 : 0.4
+        // cristal de óptica: reflejo de estudio marcado → la curvatura del lente
+        // lo deforma (look real de la referencia).
+        pm.envMapIntensity = m.name === 'Headlamp_glass' ? 2.4 : 1.0
+        pm.depthWrite = false
+        // las lentes comparten mesh con el panel pintado/parachoques → z-fighting.
+        // polygonOffset fuerte las tira hacia la cámara → quedan como capa superior.
+        pm.polygonOffset = true
+        pm.polygonOffsetFactor = -8
+        pm.polygonOffsetUnits = -8
+        pm.needsUpdate = true
+      }
+      // Ventanas (Glass_ext): vidrio con tinte leve + reflejos fuertes del estudio
+      // + oscurece el interior (vende realismo). Sin transmission pesada (estable).
+      if (m.name === 'Glass_ext') {
+        const pm = m as THREE.MeshPhysicalMaterial
+        if ('transmission' in pm) pm.transmission = 0
+        pm.color.set('#2c333b') // tinte más claro (menos oscuro)
+        pm.metalness = 0
+        pm.roughness = 0.03
+        pm.envMapIntensity = 2.2 // reflejos de estudio marcados en el vidrio
+        pm.transparent = true
+        pm.opacity = 0.42 // más transparente → se ve mejor el interior
         pm.depthWrite = false
         pm.needsUpdate = true
       }
