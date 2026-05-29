@@ -45,6 +45,23 @@ export function Model(props: any) {
   const paintColor = useConfiguratorStore((s) => s.paintColor)
   const rimStyle = useConfiguratorStore((s) => s.rimStyle)
 
+  // Pintura propia: MeshPhysicalMaterial con clearcoat → refleja el environment
+  // como pintura de auto. Reemplaza al Paint_ext original, que venía sin
+  // clearcoat (plano, sin reflejo) y con una baseColorTexture horneada que
+  // apagaba el color elegido. Sin map → el color del selector se ve puro.
+  const paintMaterial = useMemo(() => {
+    const m = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color('#0a1c3a'),
+      metalness: 0.0, // pintura sólida (no metálica) → reflejos blancos del clearcoat
+      roughness: 0.42, // base semi-mate; el brillo lo da el clearcoat
+      clearcoat: 1.0, // capa transparente reflectante (laca)
+      clearcoatRoughness: 0.06, // laca casi espejo → reflejos nítidos
+      envMapIntensity: 1.25,
+    })
+    m.name = 'Paint_ext_dynamic'
+    return m
+  }, [])
+
   // Indexar materiales por nombre (una sola vez)
   const materials = useMemo(() => {
     const map: Record<string, THREE.Material> = {}
@@ -56,6 +73,19 @@ export function Model(props: any) {
     })
     return map
   }, [scene])
+
+  // Reemplazar el material de pintura en todos los meshes que lo usan
+  // (incluye meshes multi-material: se reemplaza solo el slot Paint_ext).
+  useLayoutEffect(() => {
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return
+      if (Array.isArray(o.material)) {
+        o.material = o.material.map((m) => (m && m.name === PAINT_MAT ? paintMaterial : m))
+      } else if (o.material && o.material.name === PAINT_MAT) {
+        o.material = paintMaterial
+      }
+    })
+  }, [scene, paintMaterial])
 
   // Centrar + apoyar el auto en el piso DESPUÉS de montar, con las matrices
   // de mundo ya finales. El piso se define por las RUEDAS (no por el bbox
@@ -94,10 +124,9 @@ export function Model(props: any) {
     rig.position.z = -center.z // centrar en Z
   }, [scene])
 
-  // Pintura exterior + llantas dinámicas desde el store
+  // Color de pintura + llantas dinámicas desde el store
   useLayoutEffect(() => {
-    const paint = materials[PAINT_MAT] as THREE.MeshStandardMaterial | undefined
-    if (paint) paint.color.set(paintColor)
+    paintMaterial.color.set(paintColor)
 
     for (const name of RIM_MATS) {
       const m = materials[name] as THREE.MeshStandardMaterial | undefined
@@ -107,7 +136,7 @@ export function Model(props: any) {
         m.roughness = rimStyle.roughness
       }
     }
-  }, [paintColor, rimStyle, materials])
+  }, [paintColor, rimStyle, materials, paintMaterial])
 
   return (
     <group {...props} dispose={null}>
