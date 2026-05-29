@@ -65,8 +65,8 @@ const METAL_MATS: Record<string, { metalness: number; roughness: number; color?:
   Brake_caliper: { metalness: 0, roughness: 0.4, color: '#b81818' },
   // cromos de las luces: venían en roughness 0 (espejo perfecto) → de lejos
   // aliasing especular = cuadrados negros en los marcos. Subimos roughness.
-  Lamp_chrome: { metalness: 1, roughness: 0.3, color: '#cfcfcf' },
-  Headlamp_bulb: { metalness: 1, roughness: 0.3, color: '#cfcfcf' },
+  Lamp_chrome: { metalness: 1, roughness: 0.16, color: '#d6d6d6' }, // reflector cromado (refleja, no mate)
+  Headlamp_bulb: { metalness: 1, roughness: 0.22, color: '#cfcfcf' },
 }
 
 // Acabado de materiales NO metálicos (no necesita UV ni texturas): solo
@@ -327,10 +327,15 @@ export function Model(props: any) {
         pm.transparent = true
         // más transparentes: el cristal de óptica casi clear, los guiños/lentes
         // de color un poco más presentes para que el tinte se lea.
-        pm.opacity = m.name === 'Headlamp_glass' ? 0.25 : 0.4
-        // cristal de óptica: reflejo de estudio marcado → la curvatura del lente
-        // lo deforma (look real de la referencia).
-        pm.envMapIntensity = m.name === 'Headlamp_glass' ? 2.4 : 1.0
+        pm.opacity = m.name === 'Headlamp_glass' ? 0.35 : 0.4
+        // cristal de óptica: tinte oscuro (vidrio clear-oscuro, no blanco) +
+        // reflejo nítido (no blown). La curvatura deforma el reflejo (look real).
+        if (m.name === 'Headlamp_glass') {
+          pm.color.set('#0c0f13')
+          pm.envMapIntensity = 1.5
+        } else {
+          pm.envMapIntensity = 1.0
+        }
         pm.depthWrite = false
         // las lentes comparten mesh con el panel pintado/parachoques → z-fighting.
         // polygonOffset fuerte las tira hacia la cámara → quedan como capa superior.
