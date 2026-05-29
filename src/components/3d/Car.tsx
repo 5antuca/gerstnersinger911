@@ -57,6 +57,25 @@ const METAL_MATS: Record<string, { metalness: number; roughness: number; color?:
   Exhaust_matt: { metalness: 1, roughness: 0.55 },
 }
 
+// Acabado de materiales NO metálicos (no necesita UV ni texturas): solo
+// roughness para que cuero/alfombra/plástico dejen de verse como plástico
+// brillante. El color de cada uno se ajusta después contra las fotos de ref.
+const FINISH_MATS: Record<string, number> = {
+  Leather_BK_rough: 0.72,
+  Leather_BR_rough: 0.72,
+  Leather_BG_rough: 0.72,
+  Leather_BK_glossy: 0.42,
+  Leather_BR_glossy: 0.42,
+  Carpet_in: 0.95,
+  Plastic_int_matt: 0.85,
+  Plastic_button_matt: 0.8,
+  Momo_leather: 0.7,
+  Momo_rubber: 0.9,
+  Int_glossy: 0.14, // piano black brilloso
+  Pedal_top: 0.6,
+  Seatbelt: 0.85,
+}
+
 export function Model(props: any) {
   const gl = useThree((state) => state.gl)
   const gltf = useLoader(GLTFLoader, MODEL_URL, (loader) => {
@@ -177,6 +196,11 @@ export function Model(props: any) {
       m.roughness = cfg.roughness
       if (cfg.color) m.color.set(cfg.color)
       m.envMapIntensity = 1.3 // reflejos del environment más presentes
+    }
+    // Acabado mate de cuero/alfombra/plástico (no metales)
+    for (const [name, roughness] of Object.entries(FINISH_MATS)) {
+      const m = materials[name] as THREE.MeshStandardMaterial | undefined
+      if (m) m.roughness = roughness
     }
   }, [materials])
 
