@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useProgress } from '@react-three/drei'
 import { Scene } from '@/components/3d/Scene'
-import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS } from '@/store/useConfiguratorStore'
+import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS } from '@/store/useConfiguratorStore'
 import Image from 'next/image'
 
 function LoadingScreen() {
@@ -52,7 +52,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('general')
-  const { paintColor, setPaintColor, rimStyle, setRimStyle, interiorColor, setInteriorColor } = useConfiguratorStore()
+  const { paintColor, setPaintColor, rimStyle, setRimStyle, interiorColor, setInteriorColor, environment, setEnvironment } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
 
@@ -167,26 +167,50 @@ export default function Home() {
       )}
 
       {/* ── BOTTOM CONTROLS ── */}
-      <div className={`absolute bottom-8 left-8 right-8 z-20 pointer-events-none flex gap-6 justify-center transition-all duration-700 delay-500 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-        {/* Paint selector — General tab */}
+      <div className={`absolute bottom-8 left-8 right-8 z-20 pointer-events-none flex gap-4 items-end justify-start transition-all duration-700 delay-500 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        {/* Paint + Environment selectors — General tab (compactos, abajo-izquierda) */}
         {activeTab === 'general' && (
-          <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-6 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
-            <h3 className="text-[10px] font-semibold text-white/50 mb-4 tracking-widest uppercase">Pintura Exterior</h3>
-            <div className="flex flex-wrap gap-3">
-              {PRESET_COLORS.map((color) => (
-                <button
-                  key={color.id}
-                  onClick={() => setPaintColor(color.hex)}
-                  className={`w-10 h-10 rounded-full cursor-pointer transition-all duration-300 ${
-                    paintColor === color.hex
-                      ? 'scale-110 ring-2 ring-white shadow-[0_0_15px_rgba(255,255,255,0.25)]'
-                      : 'ring-2 ring-white/10 hover:ring-white/40'
-                  }`}
-                  style={{ backgroundColor: color.hex }}
-                  title={color.name}
-                  aria-label={`Seleccionar ${color.name}`}
-                />
-              ))}
+          <div className="flex flex-col gap-3 items-start">
+            {/* Paint selector */}
+            <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-2xl px-4 py-3 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
+              <h3 className="text-[9px] font-semibold text-white/50 mb-2.5 tracking-widest uppercase">Pintura Exterior</h3>
+              <div className="flex flex-wrap gap-2">
+                {PRESET_COLORS.map((color) => (
+                  <button
+                    key={color.id}
+                    onClick={() => setPaintColor(color.hex)}
+                    className={`w-6 h-6 rounded-full cursor-pointer transition-all duration-300 ${
+                      paintColor === color.hex
+                        ? 'scale-110 ring-2 ring-white shadow-[0_0_12px_rgba(255,255,255,0.25)]'
+                        : 'ring-1 ring-white/10 hover:ring-white/40'
+                    }`}
+                    style={{ backgroundColor: color.hex }}
+                    title={color.name}
+                    aria-label={`Seleccionar ${color.name}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Environment / HDRI selector */}
+            <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-2xl px-4 py-3 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
+              <h3 className="text-[9px] font-semibold text-white/50 mb-2.5 tracking-widest uppercase">Iluminación</h3>
+              <div className="flex flex-wrap gap-2">
+                {PRESET_ENVIRONMENTS.map((env) => (
+                  <button
+                    key={env.id}
+                    onClick={() => setEnvironment(env.id)}
+                    className={`w-6 h-6 rounded-full cursor-pointer transition-all duration-300 ${
+                      environment === env.id
+                        ? 'scale-110 ring-2 ring-white shadow-[0_0_12px_rgba(255,255,255,0.25)]'
+                        : 'ring-1 ring-white/10 hover:ring-white/40'
+                    }`}
+                    style={{ backgroundColor: env.swatch }}
+                    title={env.name}
+                    aria-label={`Iluminación ${env.name}`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         )}

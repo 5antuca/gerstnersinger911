@@ -13,7 +13,7 @@ export const PRESET_RIMS = [
   // color de las CARAS de los radios + el labio/aro exterior. Los VALLES van en
   // negro satinado fijo. Default = aluminio satinado (radios claros + valles
   // negros = look Fuchs Singer de la referencia).
-  { id: 'silver', hex: '#9a9da1', name: 'Satin Silver', metalness: 1, roughness: 0.54 },
+  { id: 'silver', hex: '#e7e7e7', name: 'Satin Silver', metalness: 1, roughness: 0.45 }, // = "Bolt wheel"/alloy EXACTO de Blender (aluminio anodizado, NO oro)
   { id: 'black', hex: '#1b1b1b', name: 'Satin Black', metalness: 0.35, roughness: 0.55 },
   { id: 'gold', hex: '#c9a84a', name: 'Aurum Gold', metalness: 0.75, roughness: 0.5 },
 ]
@@ -25,6 +25,21 @@ export const PRESET_INTERIORS = [
   { id: 'brown-plaid', hex: '#5c3a21', name: 'Brown Plaid', image: '/img/interiors/brown-plaid.jpg' },
 ]
 
+// Iluminación / HDRI del entorno. "preset" usa los presets nativos de
+// @react-three/drei <Environment preset="..."> (no requiere archivos HDRI
+// propios). Default = "warehouse": neutro-cálido, NO lava el auto a blanco como
+// "studio". El usuario puede cambiarlo en vivo con el selector ILUMINACIÓN.
+export const PRESET_ENVIRONMENTS = [
+  { id: 'studio', name: 'Studio', swatch: '#cfcfcf' },
+  { id: 'warehouse', name: 'Warehouse', swatch: '#8a8478' },
+  { id: 'city', name: 'City', swatch: '#9aa7b5' },
+  { id: 'sunset', name: 'Sunset', swatch: '#e08a4b' },
+  { id: 'forest', name: 'Forest', swatch: '#3f6b45' },
+  { id: 'apartment', name: 'Apartment', swatch: '#c4a98a' },
+] as const
+
+export type EnvironmentPreset = typeof PRESET_ENVIRONMENTS[number]['id']
+
 interface ConfiguratorState {
   paintColor: string;
   setPaintColor: (color: string) => void;
@@ -32,6 +47,8 @@ interface ConfiguratorState {
   setRimStyle: (rim: typeof PRESET_RIMS[0]) => void;
   interiorColor: typeof PRESET_INTERIORS[0];
   setInteriorColor: (interior: typeof PRESET_INTERIORS[0]) => void;
+  environment: EnvironmentPreset;
+  setEnvironment: (environment: EnvironmentPreset) => void;
 }
 
 export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
@@ -41,4 +58,6 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   setRimStyle: (rim) => set({ rimStyle: rim }),
   interiorColor: PRESET_INTERIORS[0],
   setInteriorColor: (interior) => set({ interiorColor: interior }),
+  environment: 'warehouse',
+  setEnvironment: (environment) => set({ environment }),
 }))

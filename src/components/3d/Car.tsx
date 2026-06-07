@@ -15,17 +15,21 @@ import { useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
 import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 
-const MODEL_URL = '/models/SingerClean.glb'
+const MODEL_URL = '/models/SingerClean-v4.glb'
 const SCALE = 1.0 // pack Singer original ya viene en metros (~4.9m de largo)
 
-// Nombres de material reales del GLB del Singer
+// Nombres de material reales del GLB del Singer.
+// PAINT_MAT desactivado a propósito: renderizamos la pintura TAL CUAL viene del
+// .blend (azul glossy autoreado en Blender) en vez de reemplazarla por un
+// material dinámico. Así la web respeta el look de Blender. (Para reactivar el
+// selector de color, volver a poner 'Paint ext'.)
 const PAINT_MAT = 'Paint_ext'
 const RIM_MATS = ['Fuchs_1', 'Fuchs_2', 'Fuchs_cap']
 // El piso lo definen las ruedas de calle. Material Tire_base = meshes de
 // neumático limpios y separados por rueda. (Tire_extrude/Tire_rough están
 // soldados en mega-meshes de la optimización en Max → su bbox es inservible,
 // llega a -27in y hacía flotar el auto ~0.6m.)
-const FLOOR_MATS = ['Tire_base']
+const FLOOR_MATS = ['Tire base', 'Tire_base']
 
 // Materiales metálicos. El GLB los exportó todos con metalness=0 (SketchUp no
 // autorea PBR) → se veían claros y planos. Acá les damos metalness real y un
@@ -40,19 +44,27 @@ const METAL_MATS: Record<string, { metalness: number; roughness: number; color?:
   Mirror: { metalness: 1, roughness: 0.08, color: '#dcdcdc' },
   Fuel_oil_caps: { metalness: 1, roughness: 0.25, color: '#cccccc' }, // tapas oil/fuel en metal
   // aluminio / acero satinado (más mate → gris, no blanco)
-  Alu_ext: { metalness: 1, roughness: 0.52, color: '#9a9a9a' },
+  Alu_ext: { metalness: 1, roughness: 0.42, color: '#b6b6b6' }, // marcos/trim de carroceria: cromado plata
+  Fuchs_gold: { metalness: 1, roughness: 0.34, color: '#c9a855' }, // llanta Fuchs champagne/oro mas saturado (separado del trim)
   Alu_int: { metalness: 1, roughness: 0.52, color: '#9a9a9a' },
   Metal_ext_rough: { metalness: 1, roughness: 0.55, color: '#a0a0a0' },
   Wiper_metal: { metalness: 1, roughness: 0.5, color: '#8f8f8f' },
   Bolt_wheel: { metalness: 1, roughness: 0.45 },
-  // disco de freno: metal OPACO/mate oscuro (parte interna de la rueda) → da el
-  // contraste sin pintar la llanta de negro. La pinza (Brake_caliper) sigue roja.
-  Brake_disc: { metalness: 0.45, roughness: 0.8, color: '#525252' },
+  // disco de freno: hierro fundido OSCURO + metalness BAJO. CLAVE: con metalness
+  // alto el disco ESPEJA el HDRI brillante del environment → se ve como un relleno
+  // claro y plano que tapa las aletas/profundidad (bug "fondo relleno"). Bajando
+  // metalness deja de espejar → se ven las aletas radiales, los bulones y el fondo
+  // recesado, como en Blender (mundo oscuro). La pinza (Brake_caliper) sigue roja.
+  Brake_disc: { metalness: 0.2, roughness: 0.6, color: '#2b2b2b' },
+  // aletas/cuerpo del rotor = lo que da la profundidad detrás de los rayos. Mismo
+  // criterio: oscuro + poco metálico para que no se lave con el environment.
+  Brakes_black: { metalness: 0.25, roughness: 0.55, color: '#1c1c1c' },
   Valve_metal: { metalness: 1, roughness: 0.45 },
   Momo_silver: { metalness: 1, roughness: 0.45 },
   Momo_bolts: { metalness: 1, roughness: 0.5 },
   Momo_black_metal: { metalness: 1, roughness: 0.5 },
-  Speaker_mesh: { metalness: 1, roughness: 0.6 },
+  // Speaker_mesh NO va metalico: en el .blend es metal=0 mate negro. Forzarlo a
+  // metalness=1 lo hacia reflejar el environment -> se veia gris claro. Sin override.
   Footwell_plate: { metalness: 0.3, roughness: 0.6, color: '#1c1c1c' },
   // oro (emblemas)
   Emblem_gold: { metalness: 1, roughness: 0.28 },
@@ -123,6 +135,39 @@ const COLOR_MATS: Record<string, string> = {
   Radio_screen: '#0a0a0a',
   Headlining: '#3a3a3a',
   Carpet: '#141414',
+  // Butacas + weave: color EXACTO de v5 → ver V5_LINEAR abajo (seteado en lineal).
+}
+
+// Interior mate (weave/cuero caramelo): el environment brillante del studio (pensado para la
+// pintura glossy) los "lava" a crema/desaturados. Bajamos su envMapIntensity para que rindan
+// su caramelo rico real, como en la Vista Materiales de Blender.
+const INT_RICH: Record<string, number> = {
+  // MISMO env en todo el caramelo del interior -> color UNIFORME (antes estaba disparejo:
+  // paneles 0.35 mas oscuros que butacas 0.5).
+  'PBR_Basket_Weave.001': 0.42,
+  Seat_weave_caramel: 0.42,
+  Butaca_cuero_liso: 1.0,
+  Vent_caramel_paint: 0.42,
+  'Vent_caramel_paint.001': 0.42,
+  'Leather_BG_rough.001': 0.42,
+  'Leather_BG_rough.002': 0.42,
+  Momo_leather: 0.5,
+  // butaca re-topo: env más alto para que el cognac de v5 rinda bien iluminado
+  // bajo warehouse (más tenue que studio) y no quede oscuro.
+  LP_butaca_mat: 1.0,
+  // basket weave: nombre REAL del GLB (guión bajo). Env neutro; el color exacto
+  // lo da V5_LINEAR.
+  PBR_Basket_Weave_001: 1.0,
+}
+
+// Colores EXACTOS del interior de v5 (efectivos, resueltos de los MIX nodes de v5).
+// Se setean en LINEAL con setRGB → multiplican la textura v6 para dar EXACTO el
+// color de v5, independiente del HDRI (valores fijos = NO cambian de color).
+// Fórmula: color_lineal = color_efectivo_v5 / promedio_textura_v6.
+const V5_LINEAR: Record<string, [number, number, number]> = {
+  LP_butaca_mat: [2.2596, 1.6852, 1.1856], // butaca principal = tan de v5 (Butaca_cuero_liso)
+  PBR_Basket_Weave_001: [1.2845, 1.5867, 2.3342], // weave = PBR_Basket_Weave de v5
+  Butaca_cuero_liso: [0.4874, 0.2247, 0.0633], // cuero liso (sólido) = color directo de v5
 }
 
 export function Model(props: any) {
@@ -288,11 +333,20 @@ export function Model(props: any) {
       if (cfg) {
         m.metalness = cfg.metalness
         m.roughness = cfg.roughness
-        if (cfg.color) m.color.set(cfg.color)
-        m.envMapIntensity = 1.3 // reflejos de estudio más largos en metales/chrome
+        // color: SIN override → se usa el baseColor HORNEADO del GLB (Blender,
+        // verificado exacto: Alu/Chrome/Mirror/Exhaust = #e7e7e7/#ffffff/#878787).
+        // El color vive en el GLB, no se parcha en JS. Ver Pipeline_GLB_Source_of_Truth.
+        m.envMapIntensity = 1.0 // reflejos neutros (AgX ya da el look de Blender)
       }
       if (m.name in FINISH_MATS) m.roughness = FINISH_MATS[m.name]
       if (m.name in COLOR_MATS) m.color.set(COLOR_MATS[m.name])
+      // Color EXACTO de v5 (lineal): para texturas v6 (butaca/weave) el valor
+      // multiplica el mapa y da el color de v5; para sólidos lo setea directo.
+      if (m.name in V5_LINEAR) {
+        const [lr, lg, lb] = V5_LINEAR[m.name]
+        m.color.setRGB(lr, lg, lb, THREE.LinearSRGBColorSpace)
+      }
+      if (m.name in INT_RICH) m.envMapIntensity = INT_RICH[m.name]
       // Vidrio de relojes: venía blanco opaco (base 0.8) tapando el dial.
       // Lo hacemos vidrio oscuro casi transparente → se ve el reloj negro debajo.
       if (m.name === 'Gauge_glass') {
@@ -339,6 +393,13 @@ export function Model(props: any) {
           // guiño delantero: ámbar más translúcido y reflejante
           pm.opacity = 0.3
           pm.envMapIntensity = 1.7
+        } else if (m.name === 'Glass_parking_light') {
+          // luz de posición: vidrio CLEAR (se ve el bulbo/reflector adentro), poco
+          // espejo. Antes opacity 0.4 + roughness 0.06 -> espejeaba como panel opaco.
+          pm.color.set('#f4f4f4')
+          pm.opacity = 0.2
+          pm.roughness = 0.16
+          pm.envMapIntensity = 0.45
         } else {
           pm.opacity = 0.4
           pm.envMapIntensity = 1.0
