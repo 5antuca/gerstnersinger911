@@ -7,51 +7,60 @@ import {
   ContactShadows,
   PerformanceMonitor,
 } from '@react-three/drei'
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { Model as Car } from './Car'
 import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 import * as THREE from 'three'
 
-// Escena model-agnostic. Look calcado del Material Preview de Blender:
-// HDRI = forest.exr (el studiolight por defecto de Blender), iluminación SOLO
-// por HDRI (sin luces extra), tone mapping Standard (sin Filmic) y fondo gris
-// neutro como el viewport. Así la web respeta los colores/reflejos del .blend.
+// Escena model-agnostic. Look calcado del Material Preview de Blender (HDRI por
+// preset de drei, tone mapping AgX, fondo gris neutro).
 export function Scene() {
-  // DPR adaptativo para fluidez en web: arranca en 1.25, baja a 1 si caen FPS.
+  // DPR adaptativo en desktop: arranca 1.25, baja a 1 si caen FPS.
   const [dpr, setDpr] = useState(1.25)
-  // HDRI / iluminación seleccionada por el usuario (preset de drei).
+  // Detección mobile/touch → optimizaciones de performance.
+  const [isMobile, setIsMobile] = useState(false)
   const environment = useConfiguratorStore((s) => s.environment)
+
+  useEffect(() => {
+    const m =
+      typeof window !== 'undefined' &&
+      ((window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+        window.innerWidth < 820)
+    setIsMobile(!!m)
+  }, [])
 
   return (
     <Canvas
       // Cámara fotográfica: focal larga (fov 18 ≈ tele), poca distorsión.
       camera={{ position: [6.45, 1.54, -7.52], fov: 18 }}
-      dpr={dpr}
+      // Mobile: DPR fijo en 1 (un celu DPR 2-3 renderiza 4-9× los píxeles → mata FPS).
+      dpr={isMobile ? 1 : dpr}
+      // Mobile: render ON-DEMAND → solo renderiza al interactuar (no quema GPU en
+      // idle ni se calienta/throttlea). Desktop: continuo (para autoRotate).
+      frameloop={isMobile ? 'demand' : 'always'}
       gl={{
-        antialias: true,
-        // Blender usa view transform AgX (default 4.x): desatura + comprime
-        // highlights. Lo replicamos con AgXToneMapping → el studio matchea el look
-        // de Blender por construcción (con los colores base horneados en el GLB).
-        // Ver vault: Pipeline_GLB_Source_of_Truth.
+        // AA off en mobile (caro en GPU móvil; a DPR 1 + on-demand no se nota).
+        antialias: !isMobile,
+        // AgX como el view transform de Blender 4.x.
         toneMapping: THREE.AgXToneMapping,
         powerPreference: 'high-performance',
       }}
     >
-      <PerformanceMonitor
-        onDecline={() => setDpr(1)}
-        onIncline={() => setDpr(1.5)}
-      />
+      {/* PerformanceMonitor solo en desktop (en mobile el DPR está fijo en 1). */}
+      {!isMobile && (
+        <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(1.5)} />
+      )}
 
-      {/* Fondo gris neutro como el viewport de Blender (no se usa el HDRI de
-          fondo; el HDRI va solo para reflejos/iluminación). */}
+      {/* Fondo gris neutro como el viewport de Blender. */}
       <color attach="background" args={['#3c3c3c']} />
 
       <Suspense fallback={null}>
         <Car />
 
-        {/* Sombra de contacto con el piso (el auto está quieto → frames=1). */}
+        {/* Sombra de contacto (auto quieto → frames=1, se hornea una vez).
+            Resolución más baja en mobile. */}
         <ContactShadows
-          resolution={1024}
+          resolution={isMobile ? 512 : 1024}
           frames={1}
           scale={16}
           blur={2.4}
@@ -61,10 +70,7 @@ export function Scene() {
           position={[0, 0.002, 0]}
         />
 
-        {/* HDRI SOLO para iluminación y reflejos (el fondo sigue gris neutro).
-            Preset de drei elegido por el usuario desde el selector "Entorno".
-            environmentIntensity 1.0 = strength 1.0 del World.
-            key fuerza el remount al cambiar de preset para recargar el HDRI. */}
+        {/* HDRI solo para iluminación/reflejos. Preset de drei elegido por el usuario. */}
         <Environment
           key={environment}
           preset={environment}
@@ -78,7 +84,8 @@ export function Scene() {
         enableDamping
         dampingFactor={0.04}
         rotateSpeed={0.4}
-        autoRotate
+        // autoRotate solo en desktop: en mobile rotaría sin parar = render continuo = lag.
+        autoRotate={!isMobile}
         autoRotateSpeed={0.3}
         minPolarAngle={Math.PI / 5}
         maxPolarAngle={Math.PI / 2 - 0.02}
