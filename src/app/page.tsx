@@ -72,27 +72,27 @@ export default function Home() {
       </div>
 
       {/* ── HEADER ── */}
-      <header className={`absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-8 pt-6 pb-0 pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+      <header className={`absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-3 sm:px-8 pt-4 sm:pt-6 pb-0 pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
         {/* Logo */}
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto shrink-0">
           <Image
             src="/img/logopage.webp"
             alt="Gerstner Werks Logo"
             width={130}
             height={44}
-            className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] opacity-95 object-contain"
+            className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] opacity-95 object-contain h-auto w-[84px] sm:w-[130px]"
             priority
           />
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs — compacto en mobile para que entren las 4 (Escape no se corta) */}
         <nav className="pointer-events-auto">
-          <div className="bg-black/30 backdrop-blur-xl border border-white/10 rounded-full p-1 flex gap-1">
+          <div className="bg-black/30 backdrop-blur-xl border border-white/10 rounded-full p-1 flex gap-0.5 sm:gap-1">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-5 py-2 rounded-full text-sm font-medium tracking-wide transition-all duration-300 ${
+                className={`px-2.5 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium tracking-wide transition-all duration-300 ${
                   activeTab === tab.id
                     ? 'bg-white text-black shadow-md'
                     : 'text-white/60 hover:text-white hover:bg-white/10'
@@ -104,8 +104,8 @@ export default function Home() {
           </div>
         </nav>
 
-        {/* Spacer to balance logo */}
-        <div className="w-[130px]" />
+        {/* Spacer to balance logo (solo desktop) */}
+        <div className="hidden sm:block w-[130px]" />
       </header>
 
       {/* ── INTERIOR OVERLAY ── */}
