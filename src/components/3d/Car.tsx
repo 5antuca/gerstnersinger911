@@ -448,35 +448,30 @@ export function Model(props: any) {
       // la transmission (transparencia simple estable) y subimos piso de opacidad.
       if (LENS_GLASS.has(m.name)) {
         const pm = m as THREE.MeshPhysicalMaterial
-        if ('transmission' in pm) pm.transmission = 0
+        // Vidrio REAL con TRANSMISSION, como en v5/Blender (Headlamp glass: transmission 1,
+        // IOR 1.5, base blanco). El Fresnel del vidrio real refleja el cielo en ángulos
+        // rasantes -> TAPA los internos desde el costado; clear de frente -> se ve el
+        // reflector cromado. (Antes: opacidad 0.16 sin transmission -> se veían los internos
+        // desde el costado. Trade-off: transmission cuesta un pase extra de render.)
         pm.metalness = 0
-        pm.roughness = 0.06
+        pm.thickness = 0.15
         pm.transparent = true
-        // más transparentes: el cristal de óptica casi clear, los guiños/lentes
-        // de color un poco más presentes para que el tinte se lea.
+        pm.opacity = 1
         if (m.name === 'Headlamp_glass') {
-          // óptica: vidrio CLEAR (no oscuro) → se ve el reflector cromado adentro
-          pm.color.set('#1e2228')
-          pm.opacity = 0.16
-          pm.envMapIntensity = 1.7 // reflejo nítido en la curvatura
-        } else if (m.name === 'Glass_orange') {
-          // guiño delantero: ámbar más translúcido y reflejante
-          pm.opacity = 0.3
-          pm.envMapIntensity = 1.7
+          pm.transmission = 1; pm.ior = 1.5; pm.roughness = 0.04
+          pm.color.setRGB(1, 1, 1); pm.envMapIntensity = 1.2
         } else if (m.name === 'Glass_parking_light') {
-          // luz de posición: vidrio CLEAR (se ve el bulbo/reflector adentro), poco
-          // espejo. Antes opacity 0.4 + roughness 0.06 -> espejeaba como panel opaco.
-          pm.color.set('#f4f4f4')
-          pm.opacity = 0.2
-          pm.roughness = 0.16
-          pm.envMapIntensity = 0.45
-        } else {
-          pm.opacity = 0.4
-          pm.envMapIntensity = 1.0
+          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.05
+          pm.color.setRGB(1, 1, 1); pm.envMapIntensity = 1.0
+        } else if (m.name === 'Glass_orange') {
+          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.05
+          pm.color.setRGB(1, 0.298, 0.01); pm.envMapIntensity = 1.0
+        } else if (m.name === 'Glass_red') {
+          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.05
+          pm.color.setRGB(1, 0.038, 0.038); pm.envMapIntensity = 1.0
         }
+        // las lentes comparten mesh con el panel/parachoques → z-fighting.
         pm.depthWrite = false
-        // las lentes comparten mesh con el panel pintado/parachoques → z-fighting.
-        // polygonOffset fuerte las tira hacia la cámara → quedan como capa superior.
         pm.polygonOffset = true
         pm.polygonOffsetFactor = -8
         pm.polygonOffsetUnits = -8
