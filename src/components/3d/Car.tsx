@@ -457,18 +457,24 @@ export function Model(props: any) {
         pm.thickness = 0.15
         pm.transparent = true
         pm.opacity = 1
+        // frost leve (roughness) + clearcoat: three.js NO refleja como el Eevee de Blender
+        // en ángulos rasantes -> el vidrio clear exacto de Blender dejaba ver el reflector/
+        // internos desde el costado (bug). El frost difumina los internos (lente limpio,
+        // terminado) y el clearcoat le da superficie de vidrio reflectiva.
+        pm.clearcoat = 1
+        pm.clearcoatRoughness = 0.05
         if (m.name === 'Headlamp_glass') {
-          pm.transmission = 1; pm.ior = 1.5; pm.roughness = 0.04
-          pm.color.setRGB(1, 1, 1); pm.envMapIntensity = 1.2
+          pm.transmission = 1; pm.ior = 1.5; pm.roughness = 0.28
+          pm.color.setRGB(1, 1, 1); pm.envMapIntensity = 2.5
         } else if (m.name === 'Glass_parking_light') {
-          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.05
-          pm.color.setRGB(1, 1, 1); pm.envMapIntensity = 1.0
+          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.25
+          pm.color.setRGB(1, 1, 1); pm.envMapIntensity = 2.0
         } else if (m.name === 'Glass_orange') {
-          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.05
-          pm.color.setRGB(1, 0.298, 0.01); pm.envMapIntensity = 1.0
+          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.2
+          pm.color.setRGB(1, 0.298, 0.01); pm.envMapIntensity = 1.2
         } else if (m.name === 'Glass_red') {
-          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.05
-          pm.color.setRGB(1, 0.038, 0.038); pm.envMapIntensity = 1.0
+          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.2
+          pm.color.setRGB(1, 0.038, 0.038); pm.envMapIntensity = 1.2
         }
         // las lentes comparten mesh con el panel/parachoques → z-fighting.
         pm.depthWrite = false
