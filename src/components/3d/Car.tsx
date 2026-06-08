@@ -86,7 +86,8 @@ const METAL_MATS: Record<string, { metalness: number; roughness: number; color?:
 // brillante. El color de cada uno se ajusta después contra las fotos de ref.
 const FINISH_MATS: Record<string, number> = {
   // interiores: subidos para matar el brillo de cuero/plástico bajo el env
-  PBR_Basket_Weave_001: 0.42, // mismo rough que los vents (Vent_caramel_paint) -> shading que matchea
+  PBR_Basket_Weave_001: 0.8, // MATE como tela (refleja poco, "como cuero"); antes 0.42 reflejaba y cambiaba el tono
+  Butaca_cuero_liso: 0.6, // cuero liso mate (reflejo sutil de cuero, no espejado)
   Leather_BK_rough: 0.82,
   Leather_BR_rough: 0.82,
   Leather_BG_rough: 0.82,
@@ -412,20 +413,10 @@ export function Model(props: any) {
         if (e.r !== undefined) m.roughness = e.r
       }
       if (m.name in INT_RICH) m.envMapIntensity = INT_RICH[m.name]
-      // === Cuero liso de la butaca: PLANO / UNIFORME ===
-      // Butaca_cuero_liso se ve parejo (sin sombreado direccional): su color (resuelto
-      // por V5_LINEAR) pasa a EMISIVO. NOTA: PBR_Basket_Weave_001 (tejido) y
-      // Vent_caramel_paint NO van acá — el tejido va CON LUZ para igualar al asiento
-      // (ver V5_LINEAR), y los vents quedaron con luz (pedido del usuario).
-      if (m.name === 'Butaca_cuero_liso') {
-        m.emissive.copy(m.color)
-        m.emissiveIntensity = 2.0
-        m.color.setRGB(0, 0, 0)
-        m.envMapIntensity = 0
-        m.metalness = 0
-        m.roughness = 1
-        m.needsUpdate = true
-      }
+      // Butaca_cuero_liso (cuero liso de butacas + asientos traseros Plane167/170/174/177):
+      // CON LUZ y MATE, como cuero real. Antes era plano/emisivo a x2 -> se veía brillante
+      // y "glowing", no como cuero. Ahora: color por V5_LINEAR, env 1.0 (INT_RICH), rough
+      // 0.6 (FINISH_MATS) -> tono cuero de los asientos, reflejo sutil (no espejado).
       // Vidrio de relojes: venía blanco opaco (base 0.8) tapando el dial.
       // Lo hacemos vidrio oscuro casi transparente → se ve el reloj negro debajo.
       if (m.name === 'Gauge_glass') {
