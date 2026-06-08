@@ -51,6 +51,8 @@ interface ConfiguratorState {
   setInteriorColor: (interior: typeof PRESET_INTERIORS[0]) => void;
   environment: EnvironmentPreset;
   setEnvironment: (environment: EnvironmentPreset) => void;
+  autoRotate: boolean;
+  toggleAutoRotate: () => void;
 }
 
 export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
@@ -62,4 +64,6 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   setInteriorColor: (interior) => set({ interiorColor: interior }),
   environment: 'city',
   setEnvironment: (environment) => set({ environment }),
+  autoRotate: true,
+  toggleAutoRotate: () => set((s) => ({ autoRotate: !s.autoRotate })),
 }))

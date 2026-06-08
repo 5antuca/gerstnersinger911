@@ -6,6 +6,7 @@ import {
   OrbitControls,
   ContactShadows,
   PerformanceMonitor,
+  GradientTexture,
 } from '@react-three/drei'
 import { Suspense, useState } from 'react'
 import { Model as Car } from './Car'
@@ -21,6 +22,7 @@ export function Scene() {
   const [dpr, setDpr] = useState(1.25)
   // HDRI / iluminación seleccionada por el usuario (preset de drei).
   const environment = useConfiguratorStore((s) => s.environment)
+  const autoRotate = useConfiguratorStore((s) => s.autoRotate)
 
   return (
     <Canvas
@@ -53,9 +55,16 @@ export function Scene() {
         onIncline={() => setDpr(1.5)}
       />
 
-      {/* Fondo gris neutro como el viewport de Blender (no se usa el HDRI de
-          fondo; el HDRI va solo para reflejos/iluminación). */}
-      <color attach="background" args={['#3c3c3c']} />
+      {/* Fondo: domo gris con degradé sutil (gris al horizonte → más oscuro arriba/abajo).
+          En vez de un color plano, da sensación de estar dentro de un estudio/HDRI al
+          rotar. BackSide + unlit + toneMapped:false → grises predecibles (AgX no los altera). */}
+      <color attach="background" args={['#1e1f24']} />
+      <mesh scale={60} renderOrder={-1}>
+        <sphereGeometry args={[1, 64, 64]} />
+        <meshBasicMaterial side={THREE.BackSide} depthWrite={false} toneMapped={false}>
+          <GradientTexture stops={[0, 0.5, 1]} colors={['#161619', '#3c3d43', '#18191e']} size={1024} />
+        </meshBasicMaterial>
+      </mesh>
 
       <Suspense fallback={null}>
         <Car />
@@ -100,7 +109,7 @@ export function Scene() {
         enableDamping
         dampingFactor={0.04}
         rotateSpeed={0.4}
-        autoRotate
+        autoRotate={autoRotate}
         autoRotateSpeed={0.3}
         minPolarAngle={Math.PI / 5}
         maxPolarAngle={Math.PI / 2 - 0.02}

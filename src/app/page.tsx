@@ -41,20 +41,25 @@ function LoadingScreen() {
   )
 }
 
-type Tab = 'general' | 'interior' | 'llantas' | 'escape'
+// Luz = selector de HDRI/iluminación (antes vivía dentro de "General").
+type Tab = 'general' | 'interior' | 'llantas' | 'luz' | 'escape'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'general', label: 'General' },
   { id: 'interior', label: 'Interior' },
   { id: 'llantas', label: 'Llantas' },
+  { id: 'luz', label: 'Luz' },
   { id: 'escape', label: 'Escape' },
 ]
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('general')
-  const { paintColor, setPaintColor, rimStyle, setRimStyle, interiorColor, setInteriorColor, environment, setEnvironment } = useConfiguratorStore()
+  const { paintColor, setPaintColor, rimStyle, setRimStyle, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
+  // Solo Interior y Escape difuminan el auto (son vistas 2D). General/Llantas/Luz
+  // necesitan ver el auto nítido (la luz cambia el render, hay que verlo).
+  const blurred = activeTab === 'interior' || activeTab === 'escape'
 
   return (
     <main
@@ -65,13 +70,13 @@ export default function Home() {
       <LoadingScreen />
 
       {/* 3D Canvas - always behind */}
-      <div className={`absolute inset-0 z-0 transition-all duration-[1200ms] ${isLoaded ? 'opacity-100' : 'opacity-0'} ${activeTab !== 'general' && activeTab !== 'llantas' ? 'blur-sm brightness-50' : ''}`}>
+      <div className={`absolute inset-0 z-0 transition-all duration-[1200ms] ${isLoaded ? 'opacity-100' : 'opacity-0'} ${blurred ? 'blur-sm brightness-50' : ''}`}>
         <Suspense fallback={null}>
           <Scene />
         </Suspense>
       </div>
 
-      {/* ── HEADER ── */}
+      {/* ── HEADER ── logo (izq) + botón pausar giro (der). Los tabs ahora van abajo. */}
       <header className={`absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-3 sm:px-8 pt-4 sm:pt-6 pb-0 pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
         {/* Logo */}
         <div className="pointer-events-auto shrink-0">
@@ -85,34 +90,31 @@ export default function Home() {
           />
         </div>
 
-        {/* Navigation Tabs — compacto en mobile para que entren las 4 (Escape no se corta) */}
-        <nav className="pointer-events-auto">
-          <div className="bg-black/30 backdrop-blur-xl border border-white/10 rounded-full p-1 flex gap-0.5 sm:gap-1">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-2.5 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium tracking-wide transition-all duration-300 ${
-                  activeTab === tab.id
-                    ? 'bg-white text-black shadow-md'
-                    : 'text-white/60 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        {/* Spacer to balance logo (solo desktop) */}
-        <div className="hidden sm:block w-[130px]" />
+        {/* Botón pausar / reanudar el giro automático del auto */}
+        <button
+          onClick={toggleAutoRotate}
+          className="pointer-events-auto shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/30 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300"
+          title={autoRotate ? 'Pausar giro' : 'Reanudar giro'}
+          aria-label={autoRotate ? 'Pausar giro' : 'Reanudar giro'}
+        >
+          {autoRotate ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <rect x="6" y="5" width="4" height="14" rx="1" />
+              <rect x="14" y="5" width="4" height="14" rx="1" />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
       </header>
 
       {/* ── INTERIOR OVERLAY ── */}
       {activeTab === 'interior' && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-6 pointer-events-none">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-6 pointer-events-none pb-24">
           {/* Image viewer — proporción 1:1 nativa */}
-          <div 
+          <div
             className="relative pointer-events-auto rounded-2xl overflow-hidden shadow-2xl"
             style={{ width: 'min(55vh, 460px)', height: 'min(55vh, 460px)' }}
           >
@@ -158,7 +160,7 @@ export default function Home() {
 
       {/* ── ESCAPE PLACEHOLDER ── */}
       {activeTab === 'escape' && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center">
+        <div className="absolute inset-0 z-20 flex items-center justify-center pb-24">
           <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-10 text-center">
             <p className="text-white/40 text-sm tracking-widest uppercase">Próximamente</p>
             <p className="text-white text-xl font-semibold mt-2">Configuración de Escape</p>
@@ -166,60 +168,59 @@ export default function Home() {
         </div>
       )}
 
-      {/* ── BOTTOM CONTROLS ── */}
-      <div className={`absolute bottom-8 left-8 right-8 z-20 pointer-events-none flex gap-4 items-end justify-start transition-all duration-700 delay-500 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-        {/* Paint + Environment selectors — General tab (compactos, abajo-izquierda) */}
+      {/* ── CONTROLES DEL TAB ACTIVO ── (centrados, justo arriba de la barra de tabs) */}
+      <div className={`absolute bottom-24 sm:bottom-28 left-0 right-0 z-20 px-4 pointer-events-none flex justify-center transition-all duration-700 delay-500 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        {/* General → Pintura Exterior */}
         {activeTab === 'general' && (
-          <div className="flex flex-col gap-3 items-start">
-            {/* Paint selector */}
-            <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-2xl px-4 py-3 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
-              <h3 className="text-[9px] font-semibold text-white/50 mb-2.5 tracking-widest uppercase">Pintura Exterior</h3>
-              <div className="flex flex-wrap gap-2">
-                {PRESET_COLORS.map((color) => (
-                  <button
-                    key={color.id}
-                    onClick={() => setPaintColor(color.hex)}
-                    className={`w-6 h-6 rounded-full cursor-pointer transition-all duration-300 ${
-                      paintColor === color.hex
-                        ? 'scale-110 ring-2 ring-white shadow-[0_0_12px_rgba(255,255,255,0.25)]'
-                        : 'ring-1 ring-white/10 hover:ring-white/40'
-                    }`}
-                    style={{ backgroundColor: color.hex }}
-                    title={color.name}
-                    aria-label={`Seleccionar ${color.name}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Environment / HDRI selector */}
-            <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-2xl px-4 py-3 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
-              <h3 className="text-[9px] font-semibold text-white/50 mb-2.5 tracking-widest uppercase">Iluminación</h3>
-              <div className="flex flex-wrap gap-2">
-                {PRESET_ENVIRONMENTS.map((env) => (
-                  <button
-                    key={env.id}
-                    onClick={() => setEnvironment(env.id)}
-                    className={`w-6 h-6 rounded-full cursor-pointer transition-all duration-300 ${
-                      environment === env.id
-                        ? 'scale-110 ring-2 ring-white shadow-[0_0_12px_rgba(255,255,255,0.25)]'
-                        : 'ring-1 ring-white/10 hover:ring-white/40'
-                    }`}
-                    style={{ backgroundColor: env.swatch }}
-                    title={env.name}
-                    aria-label={`Iluminación ${env.name}`}
-                  />
-                ))}
-              </div>
+          <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-2xl px-4 py-3 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
+            <h3 className="text-[9px] font-semibold text-white/50 mb-2.5 tracking-widest uppercase text-center">Pintura Exterior</h3>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color.id}
+                  onClick={() => setPaintColor(color.hex)}
+                  className={`w-6 h-6 rounded-full cursor-pointer transition-all duration-300 ${
+                    paintColor === color.hex
+                      ? 'scale-110 ring-2 ring-white shadow-[0_0_12px_rgba(255,255,255,0.25)]'
+                      : 'ring-1 ring-white/10 hover:ring-white/40'
+                  }`}
+                  style={{ backgroundColor: color.hex }}
+                  title={color.name}
+                  aria-label={`Seleccionar ${color.name}`}
+                />
+              ))}
             </div>
           </div>
         )}
 
-        {/* Rims selector — Llantas tab */}
+        {/* Luz → Iluminación / HDRI */}
+        {activeTab === 'luz' && (
+          <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-2xl px-4 py-3 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
+            <h3 className="text-[9px] font-semibold text-white/50 mb-2.5 tracking-widest uppercase text-center">Iluminación</h3>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {PRESET_ENVIRONMENTS.map((env) => (
+                <button
+                  key={env.id}
+                  onClick={() => setEnvironment(env.id)}
+                  className={`w-6 h-6 rounded-full cursor-pointer transition-all duration-300 ${
+                    environment === env.id
+                      ? 'scale-110 ring-2 ring-white shadow-[0_0_12px_rgba(255,255,255,0.25)]'
+                      : 'ring-1 ring-white/10 hover:ring-white/40'
+                  }`}
+                  style={{ backgroundColor: env.swatch }}
+                  title={env.name}
+                  aria-label={`Iluminación ${env.name}`}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Llantas → Diseño de Llantas */}
         {activeTab === 'llantas' && (
-          <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-6 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
-            <h3 className="text-[10px] font-semibold text-white/50 mb-4 tracking-widest uppercase">Diseño de Llantas</h3>
-            <div className="flex flex-wrap gap-3">
+          <div className="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/5 rounded-3xl px-6 py-5 shadow-2xl pointer-events-auto hover:bg-[#0a0a0a]/80 transition-colors duration-500">
+            <h3 className="text-[10px] font-semibold text-white/50 mb-4 tracking-widest uppercase text-center">Diseño de Llantas</h3>
+            <div className="flex flex-wrap gap-3 justify-center">
               {PRESET_RIMS.map((rim) => (
                 <button
                   key={rim.id}
@@ -237,6 +238,25 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* ── BARRA DE TABS (abajo) ── */}
+      <nav className={`absolute bottom-6 left-0 right-0 z-30 flex justify-center px-3 pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className="pointer-events-auto bg-black/30 backdrop-blur-xl border border-white/10 rounded-full p-1 flex gap-0.5 sm:gap-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-2.5 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium tracking-wide transition-all duration-300 ${
+                activeTab === tab.id
+                  ? 'bg-white text-black shadow-md'
+                  : 'text-white/60 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </nav>
     </main>
   )
 }
