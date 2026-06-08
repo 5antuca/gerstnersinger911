@@ -484,9 +484,12 @@ export function Model(props: any) {
         pm.color.set('#2c333b') // tinte más claro (menos oscuro)
         pm.metalness = 0
         pm.roughness = 0.03
-        pm.envMapIntensity = 2.2 // reflejos de estudio marcados en el vidrio
+        // env BAJO: el reflejo fuerte del sunset lavaba el interior visto a través
+        // del parabrisas (medido: butacas se veían pálidas). Bajado 2.2 -> 0.6 +
+        // más transparente -> el interior camel se lee a través del vidrio.
+        pm.envMapIntensity = 0.6
         pm.transparent = true
-        pm.opacity = 0.42 // más transparente → se ve mejor el interior
+        pm.opacity = 0.32 // más transparente → se ve mejor el interior
         pm.depthWrite = false
         pm.needsUpdate = true
       }

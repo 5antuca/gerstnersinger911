@@ -34,7 +34,18 @@ export function Scene() {
         // de Blender por construcción (con los colores base horneados en el GLB).
         // Ver vault: Pipeline_GLB_Source_of_Truth.
         toneMapping: THREE.AgXToneMapping,
+        // +12% exposición: el interior medía ~1.4x más oscuro que el Material
+        // Preview de v5 (three.js no rebota luz como Eevee). Medido con readPixels
+        // sobre la vista exacta de CamInterior. AgX hace rolloff → no quema el exterior.
+        toneMappingExposure: 1.12,
         powerPreference: 'high-performance',
+      }}
+      onCreated={(state) => {
+        // dev-only: expone el estado de R3F en window para calibración de color
+        // (mover cámara, leer pipeline, samplear píxeles). NO llega a prod.
+        if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+          ;(window as unknown as { __three?: unknown }).__three = state
+        }
       }}
     >
       <PerformanceMonitor
@@ -71,7 +82,7 @@ export function Scene() {
           <Environment
             key="v5"
             files="/env/sunset_v5.hdr"
-            environmentIntensity={1.618}
+            environmentIntensity={2.0}
             environmentRotation={[0, -2.559, 0]}
           />
         ) : (
