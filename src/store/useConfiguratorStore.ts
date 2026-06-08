@@ -60,6 +60,6 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   setRimStyle: (rim) => set({ rimStyle: rim }),
   interiorColor: PRESET_INTERIORS[0],
   setInteriorColor: (interior) => set({ interiorColor: interior }),
-  environment: 'v5',
+  environment: 'city',
   setEnvironment: (environment) => set({ environment }),
 }))

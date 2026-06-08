@@ -15,7 +15,7 @@ import { useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
 import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 
-const MODEL_URL = '/models/SingerClean-v7.glb'
+const MODEL_URL = '/models/SingerClean-v8.glb'
 const SCALE = 1.0 // pack Singer original ya viene en metros (~4.9m de largo)
 
 // Nombres de material reales del GLB del Singer.
@@ -24,7 +24,7 @@ const SCALE = 1.0 // pack Singer original ya viene en metros (~4.9m de largo)
 // material dinámico. Así la web respeta el look de Blender. (Para reactivar el
 // selector de color, volver a poner 'Paint ext'.)
 const PAINT_MAT = 'Paint_ext'
-const RIM_MATS = ['Fuchs_1', 'Fuchs_2', 'Fuchs_cap']
+const RIM_MATS = ['Fuchs_spoke', 'Fuchs_valley', 'Fuchs_caliper']
 // El piso lo definen las ruedas de calle. Material Tire_base = meshes de
 // neumático limpios y separados por rueda. (Tire_extrude/Tire_rough están
 // soldados en mega-meshes de la optimización en Max → su bbox es inservible,
@@ -163,6 +163,9 @@ const INT_RICH: Record<string, number> = {
   Chrome: 1.6,
   Lamp_chrome: 2.0,
   Headlamp_bulb: 2.0,
+  // Llanta: valle/recovecos con env BAJO -> negro profundo (el HDRI no los lava).
+  Fuchs_valley: 0.18,
+  Fuchs_caliper: 0.2,
 }
 
 // Colores EXACTOS del interior de v5 (efectivos, resueltos de los MIX nodes de v5).
@@ -226,6 +229,11 @@ const V5_EXACT: Record<string, { c: [number, number, number]; m?: number; r?: nu
   Rubber: { c: [0.011, 0.011, 0.011], m: 0, r: 0.5 },
   Emblem_blck: { c: [0.007, 0.007, 0.007], m: 0, r: 0.9 },
   Brake_caliper: { c: [0.479, 0.009, 0.009], m: 0, r: 0.4 },
+  // Llanta Fuchs (geometría HP) — materiales PROPIOS, separados del interior en Blender.
+  // El valle ya no comparte 'Leather_BK_rough' con nada → negro profundo real (no se lava).
+  // El radio (Fuchs_spoke) lo maneja el selector de llanta abajo (color elegible).
+  Fuchs_valley: { c: [0.01, 0.01, 0.01], m: 0, r: 0.5 },
+  Fuchs_caliper: { c: [0.06, 0.06, 0.06], m: 0, r: 0.6 },
 }
 
 export function Model(props: any) {
@@ -292,51 +300,11 @@ export function Model(props: any) {
     })
   }, [scene, paintMaterial])
 
-  // Llantas re-horneadas: quedaron LAVADAS (bajo contraste) vs v5/Blender (radios pulidos
-  // brillantes + valles negros profundos). Causa: el re-horneado les puso materiales del
-  // interior con propiedades equivocadas (radio = Pedal_top gris mate; valle = Leather_BK_rough)
-  // y el env alto (2.0, subido para el interior) lava los negros. Fix JS: clonamos los 3
-  // materiales SOLO en las llantas (no tocamos el interior que comparte esos nombres) y les
-  // damos las props correctas: radio = aluminio pulido, valle = negro profundo mate (env bajo),
-  // caliper = negro mate. polygonOffset en el radio -> evita z-fighting con el valle (coplanares).
-  useLayoutEffect(() => {
-    const tune = (m: THREE.Material, fn: (c: THREE.MeshStandardMaterial) => void) => {
-      const c = m.clone() as THREE.MeshStandardMaterial
-      fn(c)
-      c.needsUpdate = true
-      return c
-    }
-    scene.traverse((o) => {
-      if (!(o instanceof THREE.Mesh)) return
-      if (!/wheel/i.test(o.name)) return
-      const mats = Array.isArray(o.material) ? o.material : [o.material]
-      let changed = false
-      const out = mats.map((m) => {
-        if (!m) return m
-        if (m.name === 'Pedal_top') {
-          changed = true
-          return tune(m, (c) => {
-            c.name = 'Wheel_spoke'; c.metalness = 1; c.roughness = 0.22
-            c.color.setRGB(0.82, 0.82, 0.82); c.envMapIntensity = 0.6
-            c.polygonOffset = true; c.polygonOffsetFactor = -2; c.polygonOffsetUnits = -2
-          })
-        }
-        if (m.name === 'Leather_BK_rough') {
-          changed = true
-          return tune(m, (c) => {
-            c.name = 'Wheel_valley'; c.metalness = 0; c.roughness = 0.55
-            c.color.setRGB(0.012, 0.012, 0.012); c.envMapIntensity = 0.12
-          })
-        }
-        if (m.name === 'Brakes_black') {
-          changed = true
-          return tune(m, (c) => { c.name = 'Wheel_caliper'; c.envMapIntensity = 0.2 })
-        }
-        return m
-      })
-      if (changed) o.material = Array.isArray(o.material) ? out : (out[0] as THREE.Material)
-    })
-  }, [scene])
+  // Llanta Fuchs: arreglada DESDE LA RAÍZ en Blender (v8). La geometría es la HP
+  // (borde radio↔valle limpio, sin el dentado del re-topo LP que tenía n-gons) y usa
+  // materiales PROPIOS (Fuchs_spoke/valley/caliper), separados de Pedal_top/Leather_BK_rough
+  // del interior. Por eso ya no hace falta el clon-parche JS: la llanta se maneja por nombre
+  // de material (rim selector + V5_EXACT/INT_RICH), igual que el resto del auto.
 
   // Filtrado de texturas: anisotrópico + trilineal. Sin esto, de lejos el motor
   // usa mipmaps de baja resolución y las superficies con normal map / detalle
@@ -405,25 +373,15 @@ export function Model(props: any) {
   useLayoutEffect(() => {
     paintMaterial.color.set(paintColor)
 
-    // Fuchs estilo Singer (ref real): las CARAS de los radios + el LABIO/aro
-    // exterior (Fuchs_1) van en aluminio satinado = color del selector. Los
-    // VALLES/recovecos (Fuchs_2) van en NEGRO satinado fijo. El CENTRO (cap) en
-    // aluminio satinado. Acabado satinado (roughness alto) → sin cromo.
+    // Fuchs estilo Singer: las CARAS de los radios + el LABIO/aro exterior
+    // (Fuchs_spoke) van en aluminio satinado = color del selector. Los VALLES/recovecos
+    // (Fuchs_valley) van en NEGRO profundo FIJO (V5_EXACT), no se recolorean. Geometría
+    // HP (borde limpio) con materiales propios separados del interior.
     applyToMaterials((m) => {
-      if (m.name === 'Fuchs_1') {
-        m.color.set(rimStyle.hex) // caras de radios + labio/aro exterior
+      if (m.name === 'Fuchs_spoke') {
+        m.color.set(rimStyle.hex)
         m.metalness = rimStyle.metalness
         m.roughness = rimStyle.roughness
-        m.envMapIntensity = 0.8 // un poco menos iluminada (sin recolorear)
-      } else if (m.name === 'Fuchs_2') {
-        m.color.set('#9a9da0') // valles = aluminio satinado (mismo tono, NO oscuro)
-        m.metalness = 1
-        m.roughness = 0.55
-        m.envMapIntensity = 0.8
-      } else if (m.name === 'Fuchs_cap') {
-        m.color.set('#aeb1b4') // tapacubos central = aluminio satinado
-        m.metalness = 1
-        m.roughness = 0.5
         m.envMapIntensity = 0.8
       }
     })
