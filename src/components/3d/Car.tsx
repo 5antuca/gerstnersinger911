@@ -86,7 +86,7 @@ const METAL_MATS: Record<string, { metalness: number; roughness: number; color?:
 // brillante. El color de cada uno se ajusta después contra las fotos de ref.
 const FINISH_MATS: Record<string, number> = {
   // interiores: subidos para matar el brillo de cuero/plástico bajo el env
-  PBR_Basket_Weave_001: 0.5, // mismo rough que la butaca (LP_butaca_mat) -> shading que matchea
+  PBR_Basket_Weave_001: 0.42, // mismo rough que los vents (Vent_caramel_paint) -> shading que matchea
   Leather_BK_rough: 0.82,
   Leather_BR_rough: 0.82,
   Leather_BG_rough: 0.82,
@@ -156,9 +156,8 @@ const INT_RICH: Record<string, number> = {
   // butaca re-topo: env más alto para que el cognac de v5 rinda bien iluminado
   // bajo warehouse (más tenue que studio) y no quede oscuro.
   LP_butaca_mat: 1.0,
-  // basket weave: nombre REAL del GLB (guión bajo). Env neutro; el color exacto
-  // lo da V5_LINEAR.
-  PBR_Basket_Weave_001: 1.0,
+  // basket weave (puertas/dash/guanteras): env 0.42 = igual que los vents (match).
+  PBR_Basket_Weave_001: 0.42,
   // Faros/cromos: env alto -> espejan el sunset con fuerza (dejan de verse opacos).
   Chrome: 1.6,
   Lamp_chrome: 2.0,
@@ -173,14 +172,13 @@ const V5_LINEAR: Record<string, [number, number, number]> = {
   // LP_butaca_mat: el camel de v5 ahora está HORNEADO en el GLB (albedo sólido +
   // normal del tejido), así que ya no se tinta acá.
   // Tejido canasta (paneles de puerta + dashboard + guanteras de ambas puertas).
-  // En el GLB el tejido es PBR_Basket_Weave_001 (textura basketweave_albedo cruda
-  // [0.441,0.387,0.220]). DEBE igualar al ASIENTO (LP_butaca_mat, color efectivo
-  // [0.487,0.225,0.063]) — en v5 es el MISMO material. Antes el tejido salía más
-  // rojizo que la butaca porque estaba PLANO (saturado) y la butaca CON LUZ (lavada);
-  // ahora va con luz igual que la butaca. tint = color_asiento / albedo_GLB:
-  // [0.487,0.225,0.063] / [0.441,0.387,0.220] = [1.107,0.577,0.286].
-  PBR_Basket_Weave_001: [1.107, 0.577, 0.286], // efectivo = color del asiento (match)
-  PBR_Basket_Weave_002: [1.107, 0.577, 0.286], // idem (por si el dashboard usa el _002)
+  // DEBE igualar a los VENTS (Vent_caramel_paint, color efectivo [0.395,0.18,0.03],
+  // renderiza pálido [177,156,138]). CLAVE/RAÍZ: el promedio REAL de la textura del GLB
+  // es [0.313,0.153,0.049] (MEDIDO con readPixels, NO [0.441,...] que asumía mal) — por
+  // eso TODOS los tints anteriores daban rojo profundo [0.346,0.088,0.014]. tint correcto
+  // = color_vent / avg_real: [0.395,0.18,0.03] / [0.313,0.153,0.049] = [1.262,1.176,0.612].
+  PBR_Basket_Weave_001: [1.262, 1.176, 0.612], // efectivo = color del vent (match)
+  PBR_Basket_Weave_002: [1.262, 1.176, 0.612], // idem (por si el dashboard usa el _002)
   Butaca_cuero_liso: [0.4874, 0.2247, 0.0633], // cuero liso (sólido) = color directo de v5
 }
 
