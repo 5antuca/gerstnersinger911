@@ -86,6 +86,7 @@ const METAL_MATS: Record<string, { metalness: number; roughness: number; color?:
 // brillante. El color de cada uno se ajusta después contra las fotos de ref.
 const FINISH_MATS: Record<string, number> = {
   // interiores: subidos para matar el brillo de cuero/plástico bajo el env
+  PBR_Basket_Weave_001: 0.5, // mismo rough que la butaca (LP_butaca_mat) -> shading que matchea
   Leather_BK_rough: 0.82,
   Leather_BR_rough: 0.82,
   Leather_BG_rough: 0.82,
@@ -171,13 +172,15 @@ const INT_RICH: Record<string, number> = {
 const V5_LINEAR: Record<string, [number, number, number]> = {
   // LP_butaca_mat: el camel de v5 ahora está HORNEADO en el GLB (albedo sólido +
   // normal del tejido), así que ya no se tinta acá.
-  // Tejido canasta (paneles de puerta + dashboard). El export glTF PIERDE los nodos
-  // Mix/Multiply/tinte de v5 → el GLB sólo lleva basketweave_albedo.png crudo
-  // ([0.441,0.387,0.220], neutro). El multiplicador FRÍO anterior [1.28,1.59,2.33] lo
-  // pintaba verde-gris [0.566,0.614,0.513] ("verdoso acartonado"). Recalculado CÁLIDO:
-  // efectivo_v5 [0.406,0.247,0.116] / albedo_GLB [0.441,0.387,0.220] = [0.92,0.637,0.526].
-  PBR_Basket_Weave_001: [0.92, 0.637, 0.526], // weave = camel cálido EXACTO de v5
-  PBR_Basket_Weave_002: [0.92, 0.637, 0.526], // idem (dashboard, por si usa el _002)
+  // Tejido canasta (paneles de puerta + dashboard + guanteras de ambas puertas).
+  // En el GLB el tejido es PBR_Basket_Weave_001 (textura basketweave_albedo cruda
+  // [0.441,0.387,0.220]). DEBE igualar al ASIENTO (LP_butaca_mat, color efectivo
+  // [0.487,0.225,0.063]) — en v5 es el MISMO material. Antes el tejido salía más
+  // rojizo que la butaca porque estaba PLANO (saturado) y la butaca CON LUZ (lavada);
+  // ahora va con luz igual que la butaca. tint = color_asiento / albedo_GLB:
+  // [0.487,0.225,0.063] / [0.441,0.387,0.220] = [1.107,0.577,0.286].
+  PBR_Basket_Weave_001: [1.107, 0.577, 0.286], // efectivo = color del asiento (match)
+  PBR_Basket_Weave_002: [1.107, 0.577, 0.286], // idem (por si el dashboard usa el _002)
   Butaca_cuero_liso: [0.4874, 0.2247, 0.0633], // cuero liso (sólido) = color directo de v5
 }
 
@@ -411,19 +414,12 @@ export function Model(props: any) {
         if (e.r !== undefined) m.roughness = e.r
       }
       if (m.name in INT_RICH) m.envMapIntensity = INT_RICH[m.name]
-      // === Materiales PLANOS / UNIFORMES (pedido explícito) ===
-      // PBR_Basket_Weave_001 (paneles + dashboard), Vent_caramel_paint y
-      // Butaca_cuero_liso deben verse IGUAL en todos lados, SIN sombreado direccional
-      // ("que la luz venga del HDRI completamente, no renderizado con la luz"). Su
-      // color (ya resuelto por V5_LINEAR/V5_EXACT) pasa a EMISIVO → se muestra parejo
-      // en toda la pieza, independiente del normal/posición. El tejido conserva su
-      // patrón vía emissiveMap. emissiveIntensity 2.0 ≈ brillo de v5 (medido: [185,161,141]).
-      if (
-        m.name === 'PBR_Basket_Weave_001' ||
-        m.name === 'Vent_caramel_paint' ||
-        m.name === 'Butaca_cuero_liso'
-      ) {
-        if (m.map) m.emissiveMap = m.map
+      // === Cuero liso de la butaca: PLANO / UNIFORME ===
+      // Butaca_cuero_liso se ve parejo (sin sombreado direccional): su color (resuelto
+      // por V5_LINEAR) pasa a EMISIVO. NOTA: PBR_Basket_Weave_001 (tejido) y
+      // Vent_caramel_paint NO van acá — el tejido va CON LUZ para igualar al asiento
+      // (ver V5_LINEAR), y los vents quedaron con luz (pedido del usuario).
+      if (m.name === 'Butaca_cuero_liso') {
         m.emissive.copy(m.color)
         m.emissiveIntensity = 2.0
         m.color.setRGB(0, 0, 0)
