@@ -459,7 +459,12 @@ export function Model(props: any) {
         pm.opacity = 1
         pm.clearcoat = 0
         pm.depthWrite = true
-        pm.polygonOffset = false
+        // polygonOffset CHICO (-1) solo en las lentes de color (guiños/posición/traseras):
+        // comparten borde con la carrocería -> z-fighting (triangulito raro). El -1 las
+        // separa sin atravesar (el -8 anterior causaba rayos X). Headlamp_glass no lo necesita.
+        pm.polygonOffset = m.name !== 'Headlamp_glass'
+        pm.polygonOffsetFactor = -1
+        pm.polygonOffsetUnits = -1
         if (m.name === 'Headlamp_glass') {
           pm.transmission = 1; pm.ior = 1.5; pm.roughness = 0.04
           pm.color.setRGB(1, 1, 1); pm.envMapIntensity = 1.5
