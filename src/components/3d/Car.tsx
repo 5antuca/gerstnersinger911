@@ -151,7 +151,7 @@ const INT_RICH: Record<string, number> = {
   Vent_caramel_paint: 0.42,
   'Vent_caramel_paint.001': 0.42,
   'Leather_BG_rough.001': 0.42,
-  'Leather_BG_rough.002': 0.42,
+  Leather_BG_rough_002: 0.42, // env = vent (la key dotted .002 no matcheaba el nombre del GLB)
   Momo_leather: 0.5,
   // butaca re-topo: env más alto para que el cognac de v5 rinda bien iluminado
   // bajo warehouse (más tenue que studio) y no quede oscuro.
@@ -204,7 +204,7 @@ const V5_EXACT: Record<string, { c: [number, number, number]; m?: number; r?: nu
   Momo_stitches: { c: [0.8, 0.8, 0.8], m: 0, r: 0.96 },
   Leather_BK_rough: { c: [0.008, 0.008, 0.008], m: 0, r: 0.5 },
   Leather_BK_glossy: { c: [0.009, 0.009, 0.009], m: 0, r: 0.45 },
-  Leather_BG_rough_002: { c: [0.493, 0.212, 0.058], m: 0, r: 0.5 },
+  Leather_BG_rough_002: { c: [0.395, 0.18, 0.03], m: 0, r: 0.42 }, // guanteras + cuero trim = tono del vent (Vent_caramel_paint)
   Leather_BG_rough_001: { c: [0.787, 0.605, 0.334], m: 0, r: 0.9 }, // dash trim claro = tan claro EXACTO de v5
   Seat_belt_red: { c: [0.8, 0, 0], m: 0, r: 0.9 },
   Valve_plastic: { c: [0, 0, 0], m: 0, r: 0.9 },
