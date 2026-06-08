@@ -170,6 +170,45 @@ const V5_LINEAR: Record<string, [number, number, number]> = {
   Butaca_cuero_liso: [0.4874, 0.2247, 0.0633], // cuero liso (sólido) = color directo de v5
 }
 
+// Valores EXACTOS de material de v5 (color efectivo LINEAL + metalness + roughness),
+// leídos de singer_v5_editable.blend resolviendo los MIX nodes. Materiales SÓLIDOS de
+// interior + llantas. NO incluye: selector de pintura/llanta, vidrios/cromos (fix de
+// aliasing del web), ni las butacas texturadas (esas van en V5_LINEAR).
+const V5_EXACT: Record<string, { c: [number, number, number]; m?: number; r?: number }> = {
+  // INTERIOR
+  Plastic_int_matt: { c: [0.058, 0.058, 0.058], m: 0, r: 0.9 },
+  Plastic_button_matt: { c: [0.05, 0.05, 0.05], m: 0, r: 0.9 },
+  Plastic_gauge_bck: { c: [0.058, 0.058, 0.058], m: 0, r: 0.9 },
+  Vent_black: { c: [0.012, 0.012, 0.012], m: 0, r: 0.5 },
+  Vent_caramel_paint: { c: [0.395, 0.18, 0.03], m: 0.1, r: 0.42 },
+  Vent_caramel_paint_001: { c: [0.395, 0.18, 0.03], m: 0.1, r: 0.42 },
+  Momo_leather: { c: [0.07, 0.07, 0.07], m: 0, r: 0.5 },
+  Momo_leather_001: { c: [0.07, 0.07, 0.07], m: 0, r: 0.5 },
+  Momo_rubber: { c: [0.099, 0.099, 0.099], m: 0, r: 0.9 },
+  Momo_black_metal: { c: [0.029, 0.029, 0.029], m: 1, r: 0.45 },
+  Momo_bolts: { c: [0.067, 0.067, 0.067], m: 1, r: 0.45 },
+  Momo_logo: { c: [0.033, 0.033, 0.033], m: 0, r: 0.5 },
+  Momo_silver: { c: [0.528, 0.709, 0.8], m: 1, r: 0.22 },
+  Momo_stitches: { c: [0.8, 0.8, 0.8], m: 0, r: 0.96 },
+  Leather_BK_rough: { c: [0.008, 0.008, 0.008], m: 0, r: 0.5 },
+  Leather_BK_glossy: { c: [0.009, 0.009, 0.009], m: 0, r: 0.45 },
+  Leather_BG_rough_002: { c: [0.493, 0.212, 0.058], m: 0, r: 0.5 },
+  Seat_belt_red: { c: [0.8, 0, 0], m: 0, r: 0.9 },
+  Valve_plastic: { c: [0, 0, 0], m: 0, r: 0.9 },
+  Footwell_plate: { c: [0.011, 0.011, 0.011], m: 0, r: 0.5 },
+  Radio_screen: { c: [0.029, 0.04, 0.028], m: 0, r: 0.9 },
+  // LLANTAS
+  Brakes_black: { c: [0.103, 0.103, 0.103], m: 0, r: 0.9 },
+  Brake_disc: { c: [0.8, 0.8, 0.8], m: 1, r: 0.7 },
+  Bolt_wheel: { c: [0.8, 0.8, 0.8], m: 1, r: 0.45 },
+  Tire_base: { c: [0.021, 0.021, 0.021], m: 0, r: 0.41 },
+  Tire_rough: { c: [0.007, 0.007, 0.007], m: 0, r: 0.5 },
+  Tire_extrude: { c: [0.018, 0.018, 0.018], m: 0, r: 0.39 },
+  Rubber: { c: [0.011, 0.011, 0.011], m: 0, r: 0.5 },
+  Emblem_blck: { c: [0.007, 0.007, 0.007], m: 0, r: 0.9 },
+  Brake_caliper: { c: [0.479, 0.009, 0.009], m: 0, r: 0.4 },
+}
+
 export function Model(props: any) {
   const gl = useThree((state) => state.gl)
   const gltf = useLoader(GLTFLoader, MODEL_URL, (loader) => {
@@ -345,6 +384,14 @@ export function Model(props: any) {
       if (m.name in V5_LINEAR) {
         const [lr, lg, lb] = V5_LINEAR[m.name]
         m.color.setRGB(lr, lg, lb, THREE.LinearSRGBColorSpace)
+      }
+      // Valores EXACTOS de v5 (color lineal + metal + rough) para sólidos de
+      // interior/llantas. Pisa los overrides anteriores (METAL_MATS/COLOR_MATS/FINISH).
+      if (m.name in V5_EXACT) {
+        const e = V5_EXACT[m.name]
+        m.color.setRGB(e.c[0], e.c[1], e.c[2], THREE.LinearSRGBColorSpace)
+        if (e.m !== undefined) m.metalness = e.m
+        if (e.r !== undefined) m.roughness = e.r
       }
       if (m.name in INT_RICH) m.envMapIntensity = INT_RICH[m.name]
       // Vidrio de relojes: venía blanco opaco (base 0.8) tapando el dial.
