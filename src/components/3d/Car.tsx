@@ -411,6 +411,27 @@ export function Model(props: any) {
         if (e.r !== undefined) m.roughness = e.r
       }
       if (m.name in INT_RICH) m.envMapIntensity = INT_RICH[m.name]
+      // === Materiales PLANOS / UNIFORMES (pedido explícito) ===
+      // PBR_Basket_Weave_001 (paneles + dashboard), Vent_caramel_paint y
+      // Butaca_cuero_liso deben verse IGUAL en todos lados, SIN sombreado direccional
+      // ("que la luz venga del HDRI completamente, no renderizado con la luz"). Su
+      // color (ya resuelto por V5_LINEAR/V5_EXACT) pasa a EMISIVO → se muestra parejo
+      // en toda la pieza, independiente del normal/posición. El tejido conserva su
+      // patrón vía emissiveMap. emissiveIntensity 2.0 ≈ brillo de v5 (medido: [185,161,141]).
+      if (
+        m.name === 'PBR_Basket_Weave_001' ||
+        m.name === 'Vent_caramel_paint' ||
+        m.name === 'Butaca_cuero_liso'
+      ) {
+        if (m.map) m.emissiveMap = m.map
+        m.emissive.copy(m.color)
+        m.emissiveIntensity = 2.0
+        m.color.setRGB(0, 0, 0)
+        m.envMapIntensity = 0
+        m.metalness = 0
+        m.roughness = 1
+        m.needsUpdate = true
+      }
       // Vidrio de relojes: venía blanco opaco (base 0.8) tapando el dial.
       // Lo hacemos vidrio oscuro casi transparente → se ve el reloj negro debajo.
       if (m.name === 'Gauge_glass') {
