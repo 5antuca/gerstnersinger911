@@ -15,7 +15,7 @@ import { useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
 import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 
-const MODEL_URL = '/models/SingerClean-v5.glb'
+const MODEL_URL = '/models/SingerClean-v6.glb'
 const SCALE = 1.0 // pack Singer original ya viene en metros (~4.9m de largo)
 
 // Nombres de material reales del GLB del Singer.
@@ -165,7 +165,8 @@ const INT_RICH: Record<string, number> = {
 // color de v5, independiente del HDRI (valores fijos = NO cambian de color).
 // Fórmula: color_lineal = color_efectivo_v5 / promedio_textura_v6.
 const V5_LINEAR: Record<string, [number, number, number]> = {
-  LP_butaca_mat: [2.2596, 1.6852, 1.1856], // butaca principal = tan de v5 (Butaca_cuero_liso)
+  // LP_butaca_mat: el camel de v5 ahora está HORNEADO en el GLB (albedo sólido +
+  // normal del tejido), así que ya no se tinta acá.
   PBR_Basket_Weave_001: [1.2845, 1.5867, 2.3342], // weave = PBR_Basket_Weave de v5
   Butaca_cuero_liso: [0.4874, 0.2247, 0.0633], // cuero liso (sólido) = color directo de v5
 }
