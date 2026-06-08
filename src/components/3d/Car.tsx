@@ -292,6 +292,34 @@ export function Model(props: any) {
     })
   }, [scene, paintMaterial])
 
+  // Llantas re-horneadas: el radio gris (material Pedal_top) y el valle negro
+  // (Leather_BK_rough) quedaron COPLANARES -> z-fighting en el borde negro/gris.
+  // Band-aid: clonamos el material del radio SOLO en las llantas (para no tocar los
+  // pedales que comparten Pedal_top) y le damos polygonOffset -> gana el depth-test en
+  // el borde y la transición queda limpia. Fix de RAÍZ: re-hornear la llanta sin caras
+  // coplanares (separar capas radio/valle/disco) y re-exportar el GLB.
+  useLayoutEffect(() => {
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return
+      if (!/wheel/i.test(o.name)) return
+      const mats = Array.isArray(o.material) ? o.material : [o.material]
+      let changed = false
+      const out = mats.map((m) => {
+        if (m && m.name === 'Pedal_top') {
+          const c = m.clone()
+          c.name = 'Wheel_spoke'
+          c.polygonOffset = true
+          c.polygonOffsetFactor = -2
+          c.polygonOffsetUnits = -2
+          changed = true
+          return c
+        }
+        return m
+      })
+      if (changed) o.material = Array.isArray(o.material) ? out : (out[0] as THREE.Material)
+    })
+  }, [scene])
+
   // Filtrado de texturas: anisotrópico + trilineal. Sin esto, de lejos el motor
   // usa mipmaps de baja resolución y las superficies con normal map / detalle
   // (faros, acrílico, metales) se ven en "cuadrados" / glitchean. Esto lo arregla.
