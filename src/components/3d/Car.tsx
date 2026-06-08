@@ -292,27 +292,45 @@ export function Model(props: any) {
     })
   }, [scene, paintMaterial])
 
-  // Llantas re-horneadas: el radio gris (material Pedal_top) y el valle negro
-  // (Leather_BK_rough) quedaron COPLANARES -> z-fighting en el borde negro/gris.
-  // Band-aid: clonamos el material del radio SOLO en las llantas (para no tocar los
-  // pedales que comparten Pedal_top) y le damos polygonOffset -> gana el depth-test en
-  // el borde y la transición queda limpia. Fix de RAÍZ: re-hornear la llanta sin caras
-  // coplanares (separar capas radio/valle/disco) y re-exportar el GLB.
+  // Llantas re-horneadas: quedaron LAVADAS (bajo contraste) vs v5/Blender (radios pulidos
+  // brillantes + valles negros profundos). Causa: el re-horneado les puso materiales del
+  // interior con propiedades equivocadas (radio = Pedal_top gris mate; valle = Leather_BK_rough)
+  // y el env alto (2.0, subido para el interior) lava los negros. Fix JS: clonamos los 3
+  // materiales SOLO en las llantas (no tocamos el interior que comparte esos nombres) y les
+  // damos las props correctas: radio = aluminio pulido, valle = negro profundo mate (env bajo),
+  // caliper = negro mate. polygonOffset en el radio -> evita z-fighting con el valle (coplanares).
   useLayoutEffect(() => {
+    const tune = (m: THREE.Material, fn: (c: THREE.MeshStandardMaterial) => void) => {
+      const c = m.clone() as THREE.MeshStandardMaterial
+      fn(c)
+      c.needsUpdate = true
+      return c
+    }
     scene.traverse((o) => {
       if (!(o instanceof THREE.Mesh)) return
       if (!/wheel/i.test(o.name)) return
       const mats = Array.isArray(o.material) ? o.material : [o.material]
       let changed = false
       const out = mats.map((m) => {
-        if (m && m.name === 'Pedal_top') {
-          const c = m.clone()
-          c.name = 'Wheel_spoke'
-          c.polygonOffset = true
-          c.polygonOffsetFactor = -2
-          c.polygonOffsetUnits = -2
+        if (!m) return m
+        if (m.name === 'Pedal_top') {
           changed = true
-          return c
+          return tune(m, (c) => {
+            c.name = 'Wheel_spoke'; c.metalness = 1; c.roughness = 0.22
+            c.color.setRGB(0.82, 0.82, 0.82); c.envMapIntensity = 0.6
+            c.polygonOffset = true; c.polygonOffsetFactor = -2; c.polygonOffsetUnits = -2
+          })
+        }
+        if (m.name === 'Leather_BK_rough') {
+          changed = true
+          return tune(m, (c) => {
+            c.name = 'Wheel_valley'; c.metalness = 0; c.roughness = 0.55
+            c.color.setRGB(0.012, 0.012, 0.012); c.envMapIntensity = 0.12
+          })
+        }
+        if (m.name === 'Brakes_black') {
+          changed = true
+          return tune(m, (c) => { c.name = 'Wheel_caliper'; c.envMapIntensity = 0.2 })
         }
         return m
       })
