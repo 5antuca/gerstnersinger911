@@ -435,12 +435,13 @@ export function Model(props: any) {
         m.roughness = 0.05
         m.envMapIntensity = 3.0
       }
-      // Aro/reflector del faro: z-fighting con el parachoques en la esquina. Lo
-      // tiramos hacia la cámara para que el faro quede por encima del paragolpe.
+      // Aro/reflector del faro: el polygonOffset -8 que tenía lo tiraba hacia la cámara
+      // y ATRAVESABA el guardabarros -> el marco se veía como wireframe + dejaba ver el
+      // fondo de la óptica ("rayos X"). Sin polygonOffset + depthWrite normal -> aro
+      // cromado sólido, óptica limpia (como v5/Blender).
       if (m.name === 'Lamp_chrome') {
-        m.polygonOffset = true
-        m.polygonOffsetFactor = -8
-        m.polygonOffsetUnits = -8
+        m.polygonOffset = false
+        m.depthWrite = true
         m.needsUpdate = true
       }
       // Vidrios de faros: usaban transmission (refracción) + alpha baja → de lejos
