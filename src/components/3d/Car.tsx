@@ -158,6 +158,10 @@ const INT_RICH: Record<string, number> = {
   // basket weave: nombre REAL del GLB (guión bajo). Env neutro; el color exacto
   // lo da V5_LINEAR.
   PBR_Basket_Weave_001: 1.0,
+  // Faros/cromos: env alto -> espejan el sunset con fuerza (dejan de verse opacos).
+  Chrome: 1.6,
+  Lamp_chrome: 2.0,
+  Headlamp_bulb: 2.0,
 }
 
 // Colores EXACTOS del interior de v5 (efectivos, resueltos de los MIX nodes de v5).
@@ -167,14 +171,20 @@ const INT_RICH: Record<string, number> = {
 const V5_LINEAR: Record<string, [number, number, number]> = {
   // LP_butaca_mat: el camel de v5 ahora está HORNEADO en el GLB (albedo sólido +
   // normal del tejido), así que ya no se tinta acá.
-  PBR_Basket_Weave_001: [1.2845, 1.5867, 2.3342], // weave = PBR_Basket_Weave de v5
+  // Tejido canasta (paneles de puerta + dashboard). El export glTF PIERDE los nodos
+  // Mix/Multiply/tinte de v5 → el GLB sólo lleva basketweave_albedo.png crudo
+  // ([0.441,0.387,0.220], neutro). El multiplicador FRÍO anterior [1.28,1.59,2.33] lo
+  // pintaba verde-gris [0.566,0.614,0.513] ("verdoso acartonado"). Recalculado CÁLIDO:
+  // efectivo_v5 [0.406,0.247,0.116] / albedo_GLB [0.441,0.387,0.220] = [0.92,0.637,0.526].
+  PBR_Basket_Weave_001: [0.92, 0.637, 0.526], // weave = camel cálido EXACTO de v5
+  PBR_Basket_Weave_002: [0.92, 0.637, 0.526], // idem (dashboard, por si usa el _002)
   Butaca_cuero_liso: [0.4874, 0.2247, 0.0633], // cuero liso (sólido) = color directo de v5
 }
 
 // Valores EXACTOS de material de v5 (color efectivo LINEAL + metalness + roughness),
 // leídos de singer_v5_editable.blend resolviendo los MIX nodes. Materiales SÓLIDOS de
-// interior + llantas. NO incluye: selector de pintura/llanta, vidrios/cromos (fix de
-// aliasing del web), ni las butacas texturadas (esas van en V5_LINEAR).
+// interior + llantas + cromos de faros (rough casi-espejo de v5). NO incluye: selector
+// de pintura/llanta, los vidrios (transparencia), ni las butacas texturadas (V5_LINEAR).
 const V5_EXACT: Record<string, { c: [number, number, number]; m?: number; r?: number }> = {
   // INTERIOR
   Plastic_int_matt: { c: [0.058, 0.058, 0.058], m: 0, r: 0.9 },
@@ -194,10 +204,16 @@ const V5_EXACT: Record<string, { c: [number, number, number]; m?: number; r?: nu
   Leather_BK_rough: { c: [0.008, 0.008, 0.008], m: 0, r: 0.5 },
   Leather_BK_glossy: { c: [0.009, 0.009, 0.009], m: 0, r: 0.45 },
   Leather_BG_rough_002: { c: [0.493, 0.212, 0.058], m: 0, r: 0.5 },
+  Leather_BG_rough_001: { c: [0.787, 0.605, 0.334], m: 0, r: 0.9 }, // dash trim claro = tan claro EXACTO de v5
   Seat_belt_red: { c: [0.8, 0, 0], m: 0, r: 0.9 },
   Valve_plastic: { c: [0, 0, 0], m: 0, r: 0.9 },
   Footwell_plate: { c: [0.011, 0.011, 0.011], m: 0, r: 0.5 },
   Radio_screen: { c: [0.029, 0.04, 0.028], m: 0, r: 0.9 },
+  // FAROS / CROMOS — v5 los tiene en rough 0 (espejo). El web los tenía mate
+  // (0.14-0.22) => se veían opacos. Casi-espejo (un hilo > 0 evita aliasing) + tono cromo de v5.
+  Chrome: { c: [1, 1, 1], m: 1, r: 0.06 },
+  Lamp_chrome: { c: [1, 1, 1], m: 1, r: 0.05 },
+  Headlamp_bulb: { c: [1, 1, 1], m: 1, r: 0.06 },
   // LLANTAS
   Brakes_black: { c: [0.103, 0.103, 0.103], m: 0, r: 0.9 },
   Brake_disc: { c: [0.8, 0.8, 0.8], m: 1, r: 0.7 },
