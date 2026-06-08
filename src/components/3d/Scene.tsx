@@ -72,7 +72,7 @@ export function Scene() {
             key="v5"
             files="/env/sunset_v5.hdr"
             environmentIntensity={1.618}
-            environmentRotation={[0, 2.559, 0]}
+            environmentRotation={[0, -2.559, 0]}
           />
         ) : (
           <Environment
