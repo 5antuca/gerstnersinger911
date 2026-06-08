@@ -15,7 +15,7 @@ import { useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
 import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 
-const MODEL_URL = '/models/SingerClean-v6.glb'
+const MODEL_URL = '/models/SingerClean-v7.glb'
 const SCALE = 1.0 // pack Singer original ya viene en metros (~4.9m de largo)
 
 // Nombres de material reales del GLB del Singer.

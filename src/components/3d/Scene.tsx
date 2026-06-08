@@ -65,11 +65,22 @@ export function Scene() {
             Preset de drei elegido por el usuario desde el selector "Entorno".
             environmentIntensity 1.0 = strength 1.0 del World.
             key fuerza el remount al cambiar de preset para recargar el HDRI. */}
-        <Environment
-          key={environment}
-          preset={environment}
-          environmentIntensity={1.0}
-        />
+        {environment === 'v5' ? (
+          /* HDRI sunset.exr REAL de Blender → matchea la Vista Materiales de v5
+             (misma intensidad 1.618 + rotación que el studiolight). */
+          <Environment
+            key="v5"
+            files="/env/sunset_v5.hdr"
+            environmentIntensity={1.618}
+            environmentRotation={[0, 2.559, 0]}
+          />
+        ) : (
+          <Environment
+            key={environment}
+            preset={environment as Exclude<typeof environment, 'v5'>}
+            environmentIntensity={1.0}
+          />
+        )}
       </Suspense>
 
       <OrbitControls

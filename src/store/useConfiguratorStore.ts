@@ -30,6 +30,8 @@ export const PRESET_INTERIORS = [
 // propios). Default = "warehouse": neutro-cálido, NO lava el auto a blanco como
 // "studio". El usuario puede cambiarlo en vivo con el selector ILUMINACIÓN.
 export const PRESET_ENVIRONMENTS = [
+  // HDRI REAL de Blender (sunset.exr @1.618) = matchea la Vista Materiales de v5.
+  { id: 'v5', name: 'Materiales v5', swatch: '#e0915a' },
   { id: 'studio', name: 'Studio', swatch: '#cfcfcf' },
   { id: 'warehouse', name: 'Warehouse', swatch: '#8a8478' },
   { id: 'city', name: 'City', swatch: '#9aa7b5' },
@@ -58,6 +60,6 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   setRimStyle: (rim) => set({ rimStyle: rim }),
   interiorColor: PRESET_INTERIORS[0],
   setInteriorColor: (interior) => set({ interiorColor: interior }),
-  environment: 'warehouse',
+  environment: 'v5',
   setEnvironment: (environment) => set({ environment }),
 }))
