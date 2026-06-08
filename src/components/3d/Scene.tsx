@@ -58,11 +58,11 @@ export function Scene() {
       {/* Fondo: domo gris con degradé sutil (gris al horizonte → más oscuro arriba/abajo).
           En vez de un color plano, da sensación de estar dentro de un estudio/HDRI al
           rotar. BackSide + unlit + toneMapped:false → grises predecibles (AgX no los altera). */}
-      <color attach="background" args={['#1e1f24']} />
+      <color attach="background" args={['#131316']} />
       <mesh scale={60} renderOrder={-1}>
         <sphereGeometry args={[1, 64, 64]} />
         <meshBasicMaterial side={THREE.BackSide} depthWrite={false} toneMapped={false}>
-          <GradientTexture stops={[0, 0.5, 1]} colors={['#161619', '#3c3d43', '#18191e']} size={1024} />
+          <GradientTexture stops={[0, 0.5, 1]} colors={['#0e0e11', '#2c2d33', '#121216']} size={1024} />
         </meshBasicMaterial>
       </mesh>
 
