@@ -448,39 +448,30 @@ export function Model(props: any) {
       // la transmission (transparencia simple estable) y subimos piso de opacidad.
       if (LENS_GLASS.has(m.name)) {
         const pm = m as THREE.MeshPhysicalMaterial
-        // Vidrio REAL con TRANSMISSION, como en v5/Blender (Headlamp glass: transmission 1,
-        // IOR 1.5, base blanco). El Fresnel del vidrio real refleja el cielo en ángulos
-        // rasantes -> TAPA los internos desde el costado; clear de frente -> se ve el
-        // reflector cromado. (Antes: opacidad 0.16 sin transmission -> se veían los internos
-        // desde el costado. Trade-off: transmission cuesta un pase extra de render.)
+        // Vidrio REAL con transmission, CLEAR como en v5/Blender (se ve el reflector
+        // cromado nítido adentro). CLAVE: depthWrite=TRUE + SIN polygonOffset. El combo
+        // anterior (depthWrite=false + polygonOffset -8) causaba el bug de "rayos X" (se
+        // veía el fondo de las ópticas a través del guardabarros) y bordes tipo wireframe.
         pm.metalness = 0
         pm.thickness = 0.15
         pm.transparent = true
         pm.opacity = 1
-        // frost leve (roughness) + clearcoat: three.js NO refleja como el Eevee de Blender
-        // en ángulos rasantes -> el vidrio clear exacto de Blender dejaba ver el reflector/
-        // internos desde el costado (bug). El frost difumina los internos (lente limpio,
-        // terminado) y el clearcoat le da superficie de vidrio reflectiva.
-        pm.clearcoat = 1
-        pm.clearcoatRoughness = 0.05
+        pm.clearcoat = 0
+        pm.depthWrite = true
+        pm.polygonOffset = false
         if (m.name === 'Headlamp_glass') {
-          pm.transmission = 1; pm.ior = 1.5; pm.roughness = 0.28
-          pm.color.setRGB(1, 1, 1); pm.envMapIntensity = 2.5
+          pm.transmission = 1; pm.ior = 1.5; pm.roughness = 0.04
+          pm.color.setRGB(1, 1, 1); pm.envMapIntensity = 1.5
         } else if (m.name === 'Glass_parking_light') {
-          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.25
-          pm.color.setRGB(1, 1, 1); pm.envMapIntensity = 2.0
+          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.05
+          pm.color.setRGB(1, 1, 1); pm.envMapIntensity = 1.0
         } else if (m.name === 'Glass_orange') {
-          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.2
-          pm.color.setRGB(1, 0.298, 0.01); pm.envMapIntensity = 1.2
+          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.05
+          pm.color.setRGB(1, 0.298, 0.01); pm.envMapIntensity = 1.0
         } else if (m.name === 'Glass_red') {
-          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.2
-          pm.color.setRGB(1, 0.038, 0.038); pm.envMapIntensity = 1.2
+          pm.transmission = 1; pm.ior = 1.45; pm.roughness = 0.05
+          pm.color.setRGB(1, 0.038, 0.038); pm.envMapIntensity = 1.0
         }
-        // las lentes comparten mesh con el panel/parachoques → z-fighting.
-        pm.depthWrite = false
-        pm.polygonOffset = true
-        pm.polygonOffsetFactor = -8
-        pm.polygonOffsetUnits = -8
         pm.needsUpdate = true
       }
       // Ventanas (Glass_ext): vidrio con tinte leve + reflejos fuertes del estudio
