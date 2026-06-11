@@ -65,7 +65,7 @@ export function Model(props: any) {
   const rigRef = useRef<THREE.Group>(null)
   const paintColor = useConfiguratorStore((s) => s.paintColor)
   const paintAlpha = useConfiguratorStore((s) => s.paintAlpha)
-  const rimStyle = useConfiguratorStore((s) => s.rimStyle)
+  const rimColor = useConfiguratorStore((s) => s.rimColor)
   const decalColor = useConfiguratorStore((s) => s.decalColor)
   const decalAlpha = useConfiguratorStore((s) => s.decalAlpha)
   const interiorTint = useConfiguratorStore((s) => s.interiorTint)
@@ -175,11 +175,13 @@ export function Model(props: any) {
     paintMaterial.opacity = paintAlpha
     paintMaterial.needsUpdate = true
     applyToMaterials((m) => {
-      if (m.name === 'Fuchs_spoke') {
-        m.color.set(rimStyle.hex)
-        m.metalness = rimStyle.metalness
-        m.roughness = rimStyle.roughness
-        m.envMapIntensity = 0.8
+      // Cromados de la llanta: radios+labio, bulones y valvula (materiales
+      // exclusivos de LP_wheel_*; frenos/gomas no se tocan).
+      if (m.name === 'Fuchs_spoke' || m.name === 'Bolt_wheel' || m.name === 'Valve_metal') {
+        m.color.set(rimColor)
+        m.metalness = 1
+        m.roughness = 0.42
+        if (m.name === 'Fuchs_spoke') m.envMapIntensity = 0.8
       }
       // Adhesivos (= node group DECAL_COLOR del .blend): franjas de paragolpes
       // (color sólido directo) + banda lateral (la textura es gris ~0.773: se
@@ -231,7 +233,7 @@ export function Model(props: any) {
       }
       for (const m of o.userData.__letterMats as THREE.MeshStandardMaterial[]) aplicar(m)
     })
-  }, [paintColor, paintAlpha, rimStyle, decalColor, decalAlpha, interiorTint, applyToMaterials, paintMaterial, scene])
+  }, [paintColor, paintAlpha, rimColor, decalColor, decalAlpha, interiorTint, applyToMaterials, paintMaterial, scene])
 
   return (
     <group {...props} dispose={null}>

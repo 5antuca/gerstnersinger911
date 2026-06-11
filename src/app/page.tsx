@@ -96,7 +96,7 @@ function LoadingScreen() {
 }
 
 export default function Home() {
-  const { paintColor, setPaintColor, paintAlpha, setPaintAlpha, decalColor, setDecalColor, decalAlpha, setDecalAlpha, interiorTint, setInteriorTint, rimStyle, setRimStyle, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
+  const { paintColor, setPaintColor, paintAlpha, setPaintAlpha, decalColor, setDecalColor, decalAlpha, setDecalAlpha, interiorTint, setInteriorTint, rimColor, setRimColor, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
   const [activeTab, setActiveTab] = useState<null | 'pintura' | 'interior' | 'llantas' | 'luz'>(null)
@@ -245,18 +245,18 @@ export default function Home() {
           )}
 
           {activeTab === 'llantas' && (
-            <div className="flex items-center justify-center gap-2 px-2 pt-3 pb-1">
-              {PRESET_RIMS.map((rim) => (
-                <button key={rim.id} onClick={() => setRimStyle(rim)}
-                  className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-300 whitespace-nowrap ${
-                    rimStyle.id === rim.id
-                      ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.2)] scale-105'
-                      : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  {rim.name}
-                </button>
-              ))}
+            <div className="flex items-center gap-5 px-2 pt-3 pb-1 justify-center">
+              <div className="flex items-center gap-3">
+                <span className={popTitle + ' !mb-0 shrink-0'}>Cromado</span>
+                <ColorPickerRGB hex={rimColor} alpha={1} onHex={setRimColor} onAlpha={() => {}} size={86} />
+                <div className="grid grid-cols-3 gap-1.5">
+                  {PRESET_RIMS.map((rim) => (
+                    <button key={rim.id} onClick={() => setRimColor(rim.hex)}
+                      className={swatchCls(rimColor === rim.hex)}
+                      style={{ backgroundColor: rim.hex }} title={rim.name} aria-label={`Llantas ${rim.name}`} />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 

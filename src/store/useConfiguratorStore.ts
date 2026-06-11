@@ -9,20 +9,34 @@ export const PRESET_COLORS = [
   { id: 'british-racing-green', hex: '#14532d', name: 'Racing Green' },
 ]
 
+// Colores predeterminados del CROMADO de la llanta (radios + labio + bulones
+// + valvula = Fuchs_spoke/Bolt_wheel/Valve_metal). Acabado satinado fijo.
 export const PRESET_RIMS = [
-  // color de las CARAS de los radios + el labio/aro exterior. Los VALLES van en
-  // negro satinado fijo. Default = aluminio satinado (radios claros + valles
-  // negros = look Fuchs Singer de la referencia).
-  { id: 'silver', hex: '#e7e7e7', name: 'Satin Silver', metalness: 1, roughness: 0.45 }, // = "Bolt wheel"/alloy EXACTO de Blender (aluminio anodizado, NO oro)
-  { id: 'black', hex: '#1b1b1b', name: 'Satin Black', metalness: 0.35, roughness: 0.55 },
-  { id: 'gold', hex: '#c9a84a', name: 'Aurum Gold', metalness: 0.75, roughness: 0.5 },
+  { id: 'silver', hex: '#e7e7e7', name: 'Satin Silver' },
+  { id: 'black', hex: '#1b1b1b', name: 'Satin Black' },
+  { id: 'gold', hex: '#c9a84a', name: 'Aurum Gold' },
+  { id: 'gunmetal', hex: '#5a5a5e', name: 'Gunmetal' },
+  { id: 'bronce', hex: '#8a6a4a', name: 'Bronce' },
+  { id: 'blanco', hex: '#ececec', name: 'Blanco' },
 ]
 
 export const PRESET_INTERIORS = [
-  { id: 'camel-woven', hex: '#c19a6b', name: 'Camel Woven', image: '/img/interiors/camel-woven.jpg' },
-  { id: 'green-woven', hex: '#234a36', name: 'Green Woven', image: '/img/interiors/green-woven.jpg' },
-  { id: 'black-houndstooth', hex: '#1a1a1a', name: 'Black Houndstooth', image: '/img/interiors/black-houndstooth.jpg' },
-  { id: 'brown-plaid', hex: '#5c3a21', name: 'Brown Plaid', image: '/img/interiors/brown-plaid.jpg' },
+  // tint = multiplicador sobre las texturas camel del GLB (blanco = original).
+  { id: 'camel-woven', hex: '#c19a6b', tint: '#ffffff', name: 'Camel Woven', image: '/img/interiors/camel-woven.jpg' },
+  { id: 'green-woven', hex: '#234a36', tint: '#5a7a5c', name: 'Green Woven', image: '/img/interiors/green-woven.jpg' },
+  { id: 'black-houndstooth', hex: '#1a1a1a', tint: '#3f3f42', name: 'Black Houndstooth', image: '/img/interiors/black-houndstooth.jpg' },
+  { id: 'brown-plaid', hex: '#5c3a21', tint: '#8a5a3c', name: 'Brown Plaid', image: '/img/interiors/brown-plaid.jpg' },
+]
+
+// Colores predeterminados de los ADHESIVOS (franjas + banda PORSCHE).
+// El primero es el oro de fábrica del auto (DECAL_COLOR del .blend).
+export const PRESET_DECALS = [
+  { id: 'oro-gerstner', hex: '#c5b47a', name: 'Oro Gerstner' },
+  { id: 'blanco', hex: '#e8e6e0', name: 'Blanco' },
+  { id: 'negro', hex: '#1c1c1c', name: 'Negro' },
+  { id: 'rojo', hex: '#b02020', name: 'Rojo' },
+  { id: 'plata', hex: '#cfcfcf', name: 'Plata' },
+  { id: 'celeste-gulf', hex: '#7ab5d8', name: 'Celeste Gulf' },
 ]
 
 // Iluminación / HDRI del entorno. "preset" usa los presets nativos de
@@ -54,8 +68,10 @@ interface ConfiguratorState {
   setDecalColor: (color: string) => void;
   decalAlpha: number;
   setDecalAlpha: (alpha: number) => void;
-  rimStyle: typeof PRESET_RIMS[0];
-  setRimStyle: (rim: typeof PRESET_RIMS[0]) => void;
+  interiorTint: string;
+  setInteriorTint: (tint: string) => void;
+  rimColor: string;
+  setRimColor: (color: string) => void;
   interiorColor: typeof PRESET_INTERIORS[0];
   setInteriorColor: (interior: typeof PRESET_INTERIORS[0]) => void;
   environment: EnvironmentPreset;
@@ -74,8 +90,11 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   setDecalColor: (color) => set({ decalColor: color }),
   decalAlpha: 1,
   setDecalAlpha: (alpha) => set({ decalAlpha: alpha }),
-  rimStyle: PRESET_RIMS[0],
-  setRimStyle: (rim) => set({ rimStyle: rim }),
+  // Blanco = texturas camel originales del GLB sin alterar.
+  interiorTint: '#ffffff',
+  setInteriorTint: (tint) => set({ interiorTint: tint }),
+  rimColor: PRESET_RIMS[0].hex,
+  setRimColor: (color) => set({ rimColor: color }),
   interiorColor: PRESET_INTERIORS[0],
   setInteriorColor: (interior) => set({ interiorColor: interior }),
   environment: 'city',
