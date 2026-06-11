@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useProgress } from '@react-three/drei'
 import { Scene } from '@/components/3d/Scene'
 import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS, PRESET_DECALS, PRESET_VALLEYS } from '@/store/useConfiguratorStore'
@@ -99,7 +99,36 @@ export default function Home() {
   const { paintColor, setPaintColor, paintAlpha, setPaintAlpha, decalColor, setDecalColor, decalAlpha, setDecalAlpha, interiorTint, setInteriorTint, rimColor, setRimColor, valleyColor, setValleyColor, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
-  const [activeTab, setActiveTab] = useState<null | 'pintura' | 'interior' | 'llantas' | 'luz'>(null)
+  const [activeTab, setActiveTab] = useState<null | 'pintura' | 'interior' | 'llantas' | 'luz' | 'cargar' | 'guardar'>(null)
+  // Perfiles de color guardados (localStorage del navegador)
+  type Perfil = { name: string; cfg: { paintColor: string; paintAlpha: number; decalColor: string; decalAlpha: number; interiorTint: string; rimColor: string; valleyColor: string; environment: string } }
+  const [perfiles, setPerfiles] = useState<Perfil[]>([])
+  const [nombrePerfil, setNombrePerfil] = useState('')
+  useEffect(() => {
+    try { setPerfiles(JSON.parse(localStorage.getItem('gw_perfiles') || '[]')) } catch { /* vacio */ }
+  }, [])
+  const guardarPerfil = () => {
+    const name = nombrePerfil.trim()
+    if (!name) return
+    const cfg = { paintColor, paintAlpha, decalColor, decalAlpha, interiorTint, rimColor, valleyColor, environment }
+    const nuevos = [...perfiles.filter((p) => p.name !== name), { name, cfg }]
+    setPerfiles(nuevos)
+    localStorage.setItem('gw_perfiles', JSON.stringify(nuevos))
+    setNombrePerfil('')
+    setActiveTab(null)
+  }
+  const cargarPerfil = (p: Perfil) => {
+    setPaintColor(p.cfg.paintColor); setPaintAlpha(p.cfg.paintAlpha)
+    setDecalColor(p.cfg.decalColor); setDecalAlpha(p.cfg.decalAlpha)
+    setInteriorTint(p.cfg.interiorTint)
+    setRimColor(p.cfg.rimColor); setValleyColor(p.cfg.valleyColor)
+    setEnvironment(p.cfg.environment as Parameters<typeof setEnvironment>[0])
+  }
+  const borrarPerfil = (name: string) => {
+    const nuevos = perfiles.filter((p) => p.name !== name)
+    setPerfiles(nuevos)
+    localStorage.setItem('gw_perfiles', JSON.stringify(nuevos))
+  }
 
   // Estilos compartidos del bottom bar. Cada tab revela su panel SOLO al pasar el
   // cursor por encima (hover), via group-hover. El `pb-3` del wrapper hace de puente
@@ -175,6 +204,7 @@ export default function Home() {
               ['interior', 'Interior'],
               ['llantas', 'Llantas'],
               ['luz', 'Luz'],
+              ['cargar', 'Cargar'],
             ] as const).map(([id, label]) => (
               <button
                 key={id}
@@ -272,6 +302,45 @@ export default function Home() {
             </div>
           )}
 
+          {activeTab === 'guardar' && (
+            <div className="flex items-center justify-center gap-2 px-2 pt-3 pb-1">
+              <span className={popTitle + ' !mb-0 shrink-0'}>Nombre del perfil</span>
+              <input
+                autoFocus
+                value={nombrePerfil}
+                onChange={(e) => setNombrePerfil(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') guardarPerfil() }}
+                placeholder="ej: Azul oro clasico"
+                className="bg-white/10 border border-white/15 rounded-full px-4 py-1.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/40 w-52"
+              />
+              <button
+                onClick={guardarPerfil}
+                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-black hover:bg-white/85 transition-all"
+              >
+                Guardar
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'cargar' && (
+            <div className="flex items-center justify-center gap-2 px-2 pt-3 pb-1 flex-wrap max-w-[600px]">
+              {perfiles.length === 0 && (
+                <span className="text-white/40 text-xs py-1">No hay perfiles guardados — usá el botón 💾 para crear uno.</span>
+              )}
+              {perfiles.map((p) => (
+                <span key={p.name} className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full pl-1.5 pr-2 py-1">
+                  <span className="w-4 h-4 rounded-full border border-black/30" style={{ backgroundColor: p.cfg.paintColor }} />
+                  <span className="w-4 h-4 rounded-full border border-black/30 -ml-2" style={{ backgroundColor: p.cfg.decalColor }} />
+                  <button onClick={() => cargarPerfil(p)} className="text-xs font-medium text-white/80 hover:text-white px-1.5">
+                    {p.name}
+                  </button>
+                  <button onClick={() => borrarPerfil(p.name)} aria-label={`Borrar ${p.name}`}
+                    className="text-white/30 hover:text-white text-xs px-0.5">×</button>
+                </span>
+              ))}
+            </div>
+          )}
+
           {activeTab === 'luz' && (
             <div className="flex items-center justify-center gap-2 px-2 pt-3 pb-1">
               {PRESET_ENVIRONMENTS.map((env) => (
@@ -282,6 +351,18 @@ export default function Home() {
             </div>
           )}
         </div>
+        <button
+          onClick={() => setActiveTab(activeTab === 'guardar' ? null : 'guardar')}
+          className={`pointer-events-auto shrink-0 self-start w-10 h-10 ml-2 rounded-full backdrop-blur-2xl border border-white/10 flex items-center justify-center transition-all duration-300 ${
+            activeTab === 'guardar' ? 'bg-white text-black' : 'bg-[#0a0a0a]/75 text-white/70 hover:text-white hover:bg-white/10'
+          }`}
+          title="Guardar perfil de colores"
+          aria-label="Guardar perfil de colores"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z" />
+          </svg>
+        </button>
       </nav>
     </main>
   )
