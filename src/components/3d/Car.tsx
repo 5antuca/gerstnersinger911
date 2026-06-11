@@ -29,6 +29,25 @@ const PAINT_MAT = 'Paint_ext'
 // El piso lo definen las ruedas de calle (mediana de los fondos de Tire_base).
 const FLOOR_MATS = ['Tire base', 'Tire_base']
 
+// Familia de interior tintable: cuero camel + cuero trenzado (weave) + trims
+// caramelo. El tinte es un MULTIPLICADOR sobre el color/textura original
+// (blanco = look original del .blend). Excluye los cueros negros (BK).
+function esInteriorTintable(nombre: string): boolean {
+  const n = nombre.toLowerCase()
+  if (n.includes('bk')) return false
+  return (
+    n.startsWith('pbr_basket_weave') ||
+    n.includes('cuero') ||
+    n.includes('weave') ||
+    n.startsWith('leather_bg') ||
+    n.includes('vent_caramel') ||
+    n === 'leather_pattern' ||
+    n.startsWith('lp_butaca') ||
+    // fondo crema del reloj central (tacómetro): acompaña el tono del interior
+    n.startsWith('rev meter')
+  )
+}
+
 export function Model(props: any) {
   const gl = useThree((state) => state.gl)
   const gltf = useLoader(GLTFLoader, MODEL_URL, (loader) => {
@@ -49,6 +68,7 @@ export function Model(props: any) {
   const rimStyle = useConfiguratorStore((s) => s.rimStyle)
   const decalColor = useConfiguratorStore((s) => s.decalColor)
   const decalAlpha = useConfiguratorStore((s) => s.decalAlpha)
+  const interiorTint = useConfiguratorStore((s) => s.interiorTint)
 
   // Pintura dinámica: physical con clearcoat (mismo look que la laca del .blend).
   const paintMaterial = useMemo(() => {
@@ -177,8 +197,41 @@ export function Model(props: any) {
         m.opacity = decalAlpha
         m.needsUpdate = true
       }
+      // Tinte del interior (cuero + trenzado): multiplica el color ORIGINAL
+      // del material (guardado en userData la primera vez). Blanco = original.
+      if (esInteriorTintable(m.name)) {
+        if (!m.userData.__origColor) {
+          m.userData.__origColor = m.color.clone()
+        }
+        const orig = m.userData.__origColor as THREE.Color
+        const t = new THREE.Color(interiorTint)
+        m.color.setRGB(orig.r * t.r, orig.g * t.g, orig.b * t.b)
+        m.needsUpdate = true
+      }
     })
-  }, [paintColor, paintAlpha, rimStyle, decalColor, decalAlpha, applyToMaterials, paintMaterial])
+
+    // Letras "PORSCHE" traseras (objetos PORSCHE_L1..L7): siguen el color de
+    // los adhesivos. Material CLONADO por letra (Emblem_gold es compartido con
+    // otros emblemas que no deben cambiar). Con el color default no se tocan.
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh) || !o.name.startsWith('PORSCHE_L')) return
+      const aplicar = (m: THREE.MeshStandardMaterial) => {
+        m.color.set(decalColor)
+        m.needsUpdate = true
+      }
+      if (!o.userData.__letterMats) {
+        if (decalColor === '#c5b47a') return // default: dejar el oro original del GLB
+        if (Array.isArray(o.material)) {
+          o.material = o.material.map((m) => m.clone())
+          o.userData.__letterMats = o.material
+        } else {
+          o.material = o.material.clone()
+          o.userData.__letterMats = [o.material]
+        }
+      }
+      for (const m of o.userData.__letterMats as THREE.MeshStandardMaterial[]) aplicar(m)
+    })
+  }, [paintColor, paintAlpha, rimStyle, decalColor, decalAlpha, interiorTint, applyToMaterials, paintMaterial, scene])
 
   return (
     <group {...props} dispose={null}>
