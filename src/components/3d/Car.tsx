@@ -45,7 +45,10 @@ export function Model(props: any) {
   const scene = gltf.scene
   const rigRef = useRef<THREE.Group>(null)
   const paintColor = useConfiguratorStore((s) => s.paintColor)
+  const paintAlpha = useConfiguratorStore((s) => s.paintAlpha)
   const rimStyle = useConfiguratorStore((s) => s.rimStyle)
+  const decalColor = useConfiguratorStore((s) => s.decalColor)
+  const decalAlpha = useConfiguratorStore((s) => s.decalAlpha)
 
   // Pintura dinámica: physical con clearcoat (mismo look que la laca del .blend).
   const paintMaterial = useMemo(() => {
@@ -145,9 +148,12 @@ export function Model(props: any) {
     rig.position.z = -center.z
   }, [scene])
 
-  // Selectores dinámicos: pintura + llantas.
+  // Selectores dinámicos: pintura + llantas + adhesivos.
   useLayoutEffect(() => {
     paintMaterial.color.set(paintColor)
+    paintMaterial.transparent = paintAlpha < 1
+    paintMaterial.opacity = paintAlpha
+    paintMaterial.needsUpdate = true
     applyToMaterials((m) => {
       if (m.name === 'Fuchs_spoke') {
         m.color.set(rimStyle.hex)
@@ -155,8 +161,24 @@ export function Model(props: any) {
         m.roughness = rimStyle.roughness
         m.envMapIntensity = 0.8
       }
+      // Adhesivos (= node group DECAL_COLOR del .blend): franjas de paragolpes
+      // (color sólido directo) + banda lateral (la textura es gris ~0.773: se
+      // compensa para que el color final sea el elegido).
+      if (m.name === 'Bumper_stripe_mat') {
+        m.color.set(decalColor)
+        m.transparent = decalAlpha < 1
+        m.opacity = decalAlpha
+        m.needsUpdate = true
+      }
+      if (m.name === 'Decal_PORSCHE_tex') {
+        const c = new THREE.Color(decalColor)
+        c.multiplyScalar(1 / 0.773)
+        m.color.copy(c)
+        m.opacity = decalAlpha
+        m.needsUpdate = true
+      }
     })
-  }, [paintColor, rimStyle, applyToMaterials, paintMaterial])
+  }, [paintColor, paintAlpha, rimStyle, decalColor, decalAlpha, applyToMaterials, paintMaterial])
 
   return (
     <group {...props} dispose={null}>

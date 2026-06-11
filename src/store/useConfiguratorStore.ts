@@ -48,6 +48,12 @@ export type EnvironmentPreset = typeof PRESET_ENVIRONMENTS[number]['id']
 interface ConfiguratorState {
   paintColor: string;
   setPaintColor: (color: string) => void;
+  paintAlpha: number;
+  setPaintAlpha: (alpha: number) => void;
+  decalColor: string;
+  setDecalColor: (color: string) => void;
+  decalAlpha: number;
+  setDecalAlpha: (alpha: number) => void;
   rimStyle: typeof PRESET_RIMS[0];
   setRimStyle: (rim: typeof PRESET_RIMS[0]) => void;
   interiorColor: typeof PRESET_INTERIORS[0];
@@ -61,11 +67,18 @@ interface ConfiguratorState {
 export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   paintColor: PRESET_COLORS[0].hex,
   setPaintColor: (color) => set({ paintColor: color }),
+  paintAlpha: 1,
+  setPaintAlpha: (alpha) => set({ paintAlpha: alpha }),
+  // Dorado actual de los adhesivos (= DECAL_COLOR del .blend en sRGB)
+  decalColor: '#c5b47a',
+  setDecalColor: (color) => set({ decalColor: color }),
+  decalAlpha: 1,
+  setDecalAlpha: (alpha) => set({ decalAlpha: alpha }),
   rimStyle: PRESET_RIMS[0],
   setRimStyle: (rim) => set({ rimStyle: rim }),
   interiorColor: PRESET_INTERIORS[0],
   setInteriorColor: (interior) => set({ interiorColor: interior }),
-  environment: 'real',
+  environment: 'city',
   setEnvironment: (environment) => set({ environment }),
   autoRotate: true,
   toggleAutoRotate: () => set((s) => ({ autoRotate: !s.autoRotate })),

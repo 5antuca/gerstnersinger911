@@ -1,10 +1,64 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { useProgress } from '@react-three/drei'
 import { Scene } from '@/components/3d/Scene'
 import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS } from '@/store/useConfiguratorStore'
 import Image from 'next/image'
+import Wheel from '@uiw/react-color-wheel'
+import ShadeSlider from '@uiw/react-color-shade-slider'
+import Alpha from '@uiw/react-color-alpha'
+import { hexToHsva, hsvaToHex, type HsvaColor } from '@uiw/color-convert'
+
+/* Selector RGB circular: rueda completa de color + brillo + opacidad.
+   Controla un hex + un alpha del store del configurador. */
+function ColorPickerRGB({
+  hex,
+  alpha,
+  onHex,
+  onAlpha,
+  size = 150,
+}: {
+  hex: string
+  alpha: number
+  onHex: (hex: string) => void
+  onAlpha: (alpha: number) => void
+  size?: number
+}) {
+  const [hsva, setHsva] = useState<HsvaColor>(() => ({ ...hexToHsva(hex), a: alpha }))
+  return (
+    <div className="flex flex-col items-center gap-2.5">
+      <Wheel
+        color={hsva}
+        width={size}
+        height={size}
+        onChange={(c) => {
+          const next = { ...hsva, ...c.hsva, a: hsva.a }
+          setHsva(next)
+          onHex(hsvaToHex(next))
+        }}
+      />
+      <ShadeSlider
+        hsva={hsva}
+        style={{ width: size }}
+        onChange={(v) => {
+          const next = { ...hsva, ...v }
+          setHsva(next)
+          onHex(hsvaToHex(next))
+        }}
+      />
+      <Alpha
+        hsva={hsva}
+        style={{ width: size }}
+        onChange={(v) => {
+          const next = { ...hsva, a: v.a }
+          setHsva(next)
+          onAlpha(v.a)
+        }}
+      />
+    </div>
+  )
+}
 
 function LoadingScreen() {
   const { progress } = useProgress()
@@ -42,7 +96,7 @@ function LoadingScreen() {
 }
 
 export default function Home() {
-  const { paintColor, setPaintColor, rimStyle, setRimStyle, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
+  const { paintColor, setPaintColor, paintAlpha, setPaintAlpha, decalColor, setDecalColor, decalAlpha, setDecalAlpha, rimStyle, setRimStyle, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
 
@@ -117,19 +171,40 @@ export default function Home() {
           <div className="group relative">
             <button className={tabBtn}>Pintura</button>
             <div className={popWrap}>
-              <div className={popCard}>
-                <h3 className={popTitle}>Pintura Exterior</h3>
-                <div className="flex flex-wrap gap-2 justify-center max-w-[200px]">
-                  {PRESET_COLORS.map((color) => (
-                    <button
-                      key={color.id}
-                      onClick={() => setPaintColor(color.hex)}
-                      className={swatchCls(paintColor === color.hex)}
-                      style={{ backgroundColor: color.hex }}
-                      title={color.name}
-                      aria-label={`Pintura ${color.name}`}
-                    />
-                  ))}
+              <div className={`${popCard} flex gap-6`}>
+                {/* Pintura exterior: rueda RGB completa + brillo + opacidad */}
+                <div className="flex flex-col items-center">
+                  <h3 className={popTitle}>Pintura Exterior</h3>
+                  <ColorPickerRGB
+                    hex={paintColor}
+                    alpha={paintAlpha}
+                    onHex={setPaintColor}
+                    onAlpha={setPaintAlpha}
+                    size={150}
+                  />
+                  <div className="flex flex-wrap gap-1.5 justify-center max-w-[170px] mt-3">
+                    {PRESET_COLORS.map((color) => (
+                      <button
+                        key={color.id}
+                        onClick={() => setPaintColor(color.hex)}
+                        className={swatchCls(paintColor === color.hex)}
+                        style={{ backgroundColor: color.hex }}
+                        title={color.name}
+                        aria-label={`Pintura ${color.name}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                {/* Adhesivos: mismo selector para franjas + banda PORSCHE */}
+                <div className="flex flex-col items-center">
+                  <h3 className={popTitle}>Adhesivos</h3>
+                  <ColorPickerRGB
+                    hex={decalColor}
+                    alpha={decalAlpha}
+                    onHex={setDecalColor}
+                    onAlpha={setDecalAlpha}
+                    size={150}
+                  />
                 </div>
               </div>
             </div>
