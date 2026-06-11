@@ -20,6 +20,16 @@ export const PRESET_RIMS = [
   { id: 'blanco', hex: '#ececec', name: 'Blanco' },
 ]
 
+// Tonos del VALLE de la llanta (recovecos Fuchs_valley).
+export const PRESET_VALLEYS = [
+  { id: 'negro', hex: '#141414', name: 'Negro' },
+  { id: 'grafito', hex: '#3a3a3e', name: 'Grafito' },
+  { id: 'plata', hex: '#c9c9c9', name: 'Plata' },
+  { id: 'oro', hex: '#c9a84a', name: 'Oro' },
+  { id: 'bronce', hex: '#8a6a4a', name: 'Bronce' },
+  { id: 'blanco', hex: '#ececec', name: 'Blanco' },
+]
+
 export const PRESET_INTERIORS = [
   // tint = multiplicador sobre las texturas camel del GLB (blanco = original).
   { id: 'camel-woven', hex: '#c19a6b', tint: '#ffffff', name: 'Camel Woven', image: '/img/interiors/camel-woven.jpg' },
@@ -72,6 +82,8 @@ interface ConfiguratorState {
   setInteriorTint: (tint: string) => void;
   rimColor: string;
   setRimColor: (color: string) => void;
+  valleyColor: string;
+  setValleyColor: (color: string) => void;
   interiorColor: typeof PRESET_INTERIORS[0];
   setInteriorColor: (interior: typeof PRESET_INTERIORS[0]) => void;
   environment: EnvironmentPreset;
@@ -95,6 +107,8 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   setInteriorTint: (tint) => set({ interiorTint: tint }),
   rimColor: PRESET_RIMS[0].hex,
   setRimColor: (color) => set({ rimColor: color }),
+  valleyColor: PRESET_VALLEYS[0].hex,
+  setValleyColor: (color) => set({ valleyColor: color }),
   interiorColor: PRESET_INTERIORS[0],
   setInteriorColor: (interior) => set({ interiorColor: interior }),
   environment: 'city',

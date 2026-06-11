@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react'
 import { useProgress } from '@react-three/drei'
 import { Scene } from '@/components/3d/Scene'
-import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS, PRESET_DECALS } from '@/store/useConfiguratorStore'
+import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS, PRESET_DECALS, PRESET_VALLEYS } from '@/store/useConfiguratorStore'
 import Image from 'next/image'
 import Wheel from '@uiw/react-color-wheel'
 import ShadeSlider from '@uiw/react-color-shade-slider'
@@ -96,7 +96,7 @@ function LoadingScreen() {
 }
 
 export default function Home() {
-  const { paintColor, setPaintColor, paintAlpha, setPaintAlpha, decalColor, setDecalColor, decalAlpha, setDecalAlpha, interiorTint, setInteriorTint, rimColor, setRimColor, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
+  const { paintColor, setPaintColor, paintAlpha, setPaintAlpha, decalColor, setDecalColor, decalAlpha, setDecalAlpha, interiorTint, setInteriorTint, rimColor, setRimColor, valleyColor, setValleyColor, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
   const [activeTab, setActiveTab] = useState<null | 'pintura' | 'interior' | 'llantas' | 'luz'>(null)
@@ -144,30 +144,30 @@ export default function Home() {
           />
         </div>
 
-        {/* Botón pausar / reanudar el giro automático del auto */}
-        <button
-          onClick={toggleAutoRotate}
-          className="pointer-events-auto shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/30 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300"
-          title={autoRotate ? 'Pausar giro' : 'Reanudar giro'}
-          aria-label={autoRotate ? 'Pausar giro' : 'Reanudar giro'}
-        >
-          {autoRotate ? (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <rect x="6" y="5" width="4" height="14" rx="1" />
-              <rect x="14" y="5" width="4" height="14" rx="1" />
-            </svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          )}
-        </button>
+
       </header>
 
       {/* ── BOTTOM BAR ── la barra ES el menú: al elegir un tab se expande
           horizontalmente con los controles inline (nada tapa el vehículo). */}
       <nav className={`absolute bottom-5 left-0 right-0 z-30 flex justify-center px-3 pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-        <div className="pointer-events-auto bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 rounded-3xl px-3 py-2 shadow-2xl max-w-[96vw] overflow-x-auto">
+        <button
+          onClick={toggleAutoRotate}
+          className="pointer-events-auto shrink-0 self-start w-10 h-10 mr-2 rounded-full bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300"
+          title={autoRotate ? 'Pausar giro' : 'Reanudar giro'}
+          aria-label={autoRotate ? 'Pausar giro' : 'Reanudar giro'}
+        >
+          {autoRotate ? (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <rect x="6" y="5" width="4" height="14" rx="1" />
+              <rect x="14" y="5" width="4" height="14" rx="1" />
+            </svg>
+          ) : (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
+        <div className="pointer-events-auto bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 rounded-3xl px-3 py-2 shadow-2xl max-w-[88vw] overflow-x-auto">
           {/* fila de tabs */}
           <div className="flex gap-1 justify-center">
             {([
@@ -254,6 +254,18 @@ export default function Home() {
                     <button key={rim.id} onClick={() => setRimColor(rim.hex)}
                       className={swatchCls(rimColor === rim.hex)}
                       style={{ backgroundColor: rim.hex }} title={rim.name} aria-label={`Llantas ${rim.name}`} />
+                  ))}
+                </div>
+              </div>
+              <div className="w-px h-20 bg-white/10 shrink-0" />
+              <div className="flex items-center gap-3">
+                <span className={popTitle + ' !mb-0 shrink-0'}>Valle</span>
+                <ColorPickerRGB hex={valleyColor} alpha={1} onHex={setValleyColor} onAlpha={() => {}} size={86} />
+                <div className="grid grid-cols-3 gap-1.5">
+                  {PRESET_VALLEYS.map((v) => (
+                    <button key={v.id} onClick={() => setValleyColor(v.hex)}
+                      className={swatchCls(valleyColor === v.hex)}
+                      style={{ backgroundColor: v.hex }} title={v.name} aria-label={`Valle ${v.name}`} />
                   ))}
                 </div>
               </div>

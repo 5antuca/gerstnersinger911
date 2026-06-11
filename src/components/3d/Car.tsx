@@ -66,6 +66,7 @@ export function Model(props: any) {
   const paintColor = useConfiguratorStore((s) => s.paintColor)
   const paintAlpha = useConfiguratorStore((s) => s.paintAlpha)
   const rimColor = useConfiguratorStore((s) => s.rimColor)
+  const valleyColor = useConfiguratorStore((s) => s.valleyColor)
   const decalColor = useConfiguratorStore((s) => s.decalColor)
   const decalAlpha = useConfiguratorStore((s) => s.decalAlpha)
   const interiorTint = useConfiguratorStore((s) => s.interiorTint)
@@ -175,13 +176,26 @@ export function Model(props: any) {
     paintMaterial.opacity = paintAlpha
     paintMaterial.needsUpdate = true
     applyToMaterials((m) => {
-      // Cromados de la llanta: radios+labio, bulones y valvula (materiales
-      // exclusivos de LP_wheel_*; frenos/gomas no se tocan).
-      if (m.name === 'Fuchs_spoke' || m.name === 'Bolt_wheel' || m.name === 'Valve_metal') {
-        m.color.set(rimColor)
-        m.metalness = 1
-        m.roughness = 0.42
-        if (m.name === 'Fuchs_spoke') m.envMapIntensity = 0.8
+      // Cromados de la llanta: radios+labio (Fuchs_spoke*), centro
+      // (Ignition_metal*), bulones y valvula. Matching por PREFIJO: el GLB
+      // trae instancias duplicadas con sufijo (.001) que el match exacto perdia.
+      {
+        const ml = m.name.toLowerCase()
+        if (ml.startsWith('fuchs_spoke') || ml.startsWith('ignition_metal') ||
+            ml.startsWith('bolt_wheel') || ml.startsWith('valve_metal')) {
+          m.color.set(rimColor)
+          m.metalness = 1
+          m.roughness = 0.42
+          if (ml.startsWith('fuchs_spoke')) m.envMapIntensity = 0.8
+          m.needsUpdate = true
+        }
+        // Valle de la llanta (recovecos): selector propio.
+        if (ml.startsWith('fuchs_valley')) {
+          m.color.set(valleyColor)
+          m.metalness = 0.4
+          m.roughness = 0.55
+          m.needsUpdate = true
+        }
       }
       // Adhesivos (= node group DECAL_COLOR del .blend): franjas de paragolpes
       // (color sólido directo) + banda lateral (la textura es gris ~0.773: se
@@ -233,7 +247,7 @@ export function Model(props: any) {
       }
       for (const m of o.userData.__letterMats as THREE.MeshStandardMaterial[]) aplicar(m)
     })
-  }, [paintColor, paintAlpha, rimColor, decalColor, decalAlpha, interiorTint, applyToMaterials, paintMaterial, scene])
+  }, [paintColor, paintAlpha, rimColor, valleyColor, decalColor, decalAlpha, interiorTint, applyToMaterials, paintMaterial, scene])
 
   return (
     <group {...props} dispose={null}>
