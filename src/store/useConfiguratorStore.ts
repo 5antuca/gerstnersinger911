@@ -72,12 +72,18 @@ export type EnvironmentPreset = typeof PRESET_ENVIRONMENTS[number]['id']
 interface ConfiguratorState {
   paintColor: string;
   setPaintColor: (color: string) => void;
-  paintAlpha: number;
-  setPaintAlpha: (alpha: number) => void;
+  paintFinish: number;
+  setPaintFinish: (v: number) => void;
   decalColor: string;
   setDecalColor: (color: string) => void;
-  decalAlpha: number;
-  setDecalAlpha: (alpha: number) => void;
+  decalFinish: number;
+  setDecalFinish: (v: number) => void;
+  interiorFinish: number;
+  setInteriorFinish: (v: number) => void;
+  rimFinish: number;
+  setRimFinish: (v: number) => void;
+  valleyFinish: number;
+  setValleyFinish: (v: number) => void;
   interiorTint: string;
   setInteriorTint: (tint: string) => void;
   rimColor: string;
@@ -95,13 +101,20 @@ interface ConfiguratorState {
 export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   paintColor: PRESET_COLORS[0].hex,
   setPaintColor: (color) => set({ paintColor: color }),
-  paintAlpha: 1,
-  setPaintAlpha: (alpha) => set({ paintAlpha: alpha }),
+  // Acabados mate(0)↔metalico(1). Defaults = look actual de cada familia.
+  paintFinish: 0.85,
+  setPaintFinish: (v) => set({ paintFinish: v }),
   // Dorado actual de los adhesivos (= DECAL_COLOR del .blend en sRGB)
   decalColor: '#c5b47a',
   setDecalColor: (color) => set({ decalColor: color }),
-  decalAlpha: 1,
-  setDecalAlpha: (alpha) => set({ decalAlpha: alpha }),
+  decalFinish: 0,
+  setDecalFinish: (v) => set({ decalFinish: v }),
+  interiorFinish: 0,
+  setInteriorFinish: (v) => set({ interiorFinish: v }),
+  rimFinish: 1,
+  setRimFinish: (v) => set({ rimFinish: v }),
+  valleyFinish: 0.4,
+  setValleyFinish: (v) => set({ valleyFinish: v }),
   // Blanco = texturas camel originales del GLB sin alterar.
   interiorTint: '#ffffff',
   setInteriorTint: (tint) => set({ interiorTint: tint }),

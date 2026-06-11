@@ -64,12 +64,15 @@ export function Model(props: any) {
   const scene = gltf.scene
   const rigRef = useRef<THREE.Group>(null)
   const paintColor = useConfiguratorStore((s) => s.paintColor)
-  const paintAlpha = useConfiguratorStore((s) => s.paintAlpha)
+  const paintFinish = useConfiguratorStore((s) => s.paintFinish)
   const rimColor = useConfiguratorStore((s) => s.rimColor)
   const valleyColor = useConfiguratorStore((s) => s.valleyColor)
   const decalColor = useConfiguratorStore((s) => s.decalColor)
-  const decalAlpha = useConfiguratorStore((s) => s.decalAlpha)
+  const decalFinish = useConfiguratorStore((s) => s.decalFinish)
   const interiorTint = useConfiguratorStore((s) => s.interiorTint)
+  const interiorFinish = useConfiguratorStore((s) => s.interiorFinish)
+  const rimFinish = useConfiguratorStore((s) => s.rimFinish)
+  const valleyFinish = useConfiguratorStore((s) => s.valleyFinish)
 
   // Pintura dinámica: physical con clearcoat (mismo look que la laca del .blend).
   const paintMaterial = useMemo(() => {
@@ -172,8 +175,9 @@ export function Model(props: any) {
   // Selectores dinámicos: pintura + llantas + adhesivos.
   useLayoutEffect(() => {
     paintMaterial.color.set(paintColor)
-    paintMaterial.transparent = paintAlpha < 1
-    paintMaterial.opacity = paintAlpha
+    // mate(0)↔metalico(1); en 0.85 = la pintura flake actual exacta
+    paintMaterial.metalness = paintFinish
+    paintMaterial.roughness = 0.55 - 0.15 * paintFinish
     paintMaterial.needsUpdate = true
     applyToMaterials((m) => {
       // Cromados de la llanta: radios+labio (Fuchs_spoke*), centro
@@ -184,16 +188,16 @@ export function Model(props: any) {
         if (ml.startsWith('fuchs_spoke') || ml.startsWith('ignition_metal') ||
             ml.startsWith('bolt_wheel') || ml.startsWith('valve_metal')) {
           m.color.set(rimColor)
-          m.metalness = 1
-          m.roughness = 0.42
+          m.metalness = rimFinish
+          m.roughness = 0.65 - 0.23 * rimFinish
           if (ml.startsWith('fuchs_spoke')) m.envMapIntensity = 0.8
           m.needsUpdate = true
         }
         // Valle de la llanta (recovecos): selector propio.
         if (ml.startsWith('fuchs_valley')) {
           m.color.set(valleyColor)
-          m.metalness = 0.4
-          m.roughness = 0.55
+          m.metalness = valleyFinish
+          m.roughness = 0.66 - 0.27 * valleyFinish
           m.needsUpdate = true
         }
       }
@@ -202,15 +206,16 @@ export function Model(props: any) {
       // compensa para que el color final sea el elegido).
       if (m.name === 'Bumper_stripe_mat') {
         m.color.set(decalColor)
-        m.transparent = decalAlpha < 1
-        m.opacity = decalAlpha
+        m.metalness = decalFinish
+        m.roughness = 0.45 - 0.2 * decalFinish
         m.needsUpdate = true
       }
       if (m.name === 'Decal_PORSCHE_tex') {
         const c = new THREE.Color(decalColor)
         c.multiplyScalar(1 / 0.773)
         m.color.copy(c)
-        m.opacity = decalAlpha
+        m.metalness = decalFinish
+        m.roughness = 0.45 - 0.2 * decalFinish
         m.needsUpdate = true
       }
       // Tinte del interior (cuero + trenzado): multiplica el color ORIGINAL
@@ -218,10 +223,15 @@ export function Model(props: any) {
       if (esInteriorTintable(m.name)) {
         if (!m.userData.__origColor) {
           m.userData.__origColor = m.color.clone()
+          m.userData.__origRough = m.roughness
         }
         const orig = m.userData.__origColor as THREE.Color
         const t = new THREE.Color(interiorTint)
         m.color.setRGB(orig.r * t.r, orig.g * t.g, orig.b * t.b)
+        // acabado: 0 = original del GLB; 1 = cuero metalizado
+        const or = m.userData.__origRough as number
+        m.metalness = interiorFinish * 0.9
+        m.roughness = or * (1 - interiorFinish) + 0.3 * interiorFinish
         m.needsUpdate = true
       }
     })
@@ -233,6 +243,8 @@ export function Model(props: any) {
       if (!(o instanceof THREE.Mesh) || !o.name.startsWith('PORSCHE_L')) return
       const aplicar = (m: THREE.MeshStandardMaterial) => {
         m.color.set(decalColor)
+        m.metalness = Math.max(decalFinish, 0.3)
+        m.roughness = 0.45 - 0.2 * decalFinish
         m.needsUpdate = true
       }
       if (!o.userData.__letterMats) {
@@ -247,7 +259,7 @@ export function Model(props: any) {
       }
       for (const m of o.userData.__letterMats as THREE.MeshStandardMaterial[]) aplicar(m)
     })
-  }, [paintColor, paintAlpha, rimColor, valleyColor, decalColor, decalAlpha, interiorTint, applyToMaterials, paintMaterial, scene])
+  }, [paintColor, paintFinish, rimColor, rimFinish, valleyColor, valleyFinish, decalColor, decalFinish, interiorTint, interiorFinish, applyToMaterials, paintMaterial, scene])
 
   return (
     <group {...props} dispose={null}>

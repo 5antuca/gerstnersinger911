@@ -7,25 +7,24 @@ import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRE
 import Image from 'next/image'
 import Wheel from '@uiw/react-color-wheel'
 import ShadeSlider from '@uiw/react-color-shade-slider'
-import Alpha from '@uiw/react-color-alpha'
 import { hexToHsva, hsvaToHex, type HsvaColor } from '@uiw/color-convert'
 
 /* Selector RGB circular: rueda completa de color + brillo + opacidad.
    Controla un hex + un alpha del store del configurador. */
 function ColorPickerRGB({
   hex,
-  alpha,
+  finish,
   onHex,
-  onAlpha,
+  onFinish,
   size = 150,
 }: {
   hex: string
-  alpha: number
+  finish: number
   onHex: (hex: string) => void
-  onAlpha: (alpha: number) => void
+  onFinish: (v: number) => void
   size?: number
 }) {
-  const [hsva, setHsva] = useState<HsvaColor>(() => ({ ...hexToHsva(hex), a: alpha }))
+  const [hsva, setHsva] = useState<HsvaColor>(() => ({ ...hexToHsva(hex), a: 1 }))
   return (
     <div className="flex flex-col items-center gap-2.5">
       <Wheel
@@ -33,7 +32,7 @@ function ColorPickerRGB({
         width={size}
         height={size}
         onChange={(c) => {
-          const next = { ...hsva, ...c.hsva, a: hsva.a }
+          const next = { ...hsva, ...c.hsva, a: 1 }
           setHsva(next)
           onHex(hsvaToHex(next))
         }}
@@ -47,15 +46,20 @@ function ColorPickerRGB({
           onHex(hsvaToHex(next))
         }}
       />
-      <Alpha
-        hsva={hsva}
-        style={{ width: size }}
-        onChange={(v) => {
-          const next = { ...hsva, a: v.a }
-          setHsva(next)
-          onAlpha(v.a)
-        }}
-      />
+      {/* Acabado: mate (izq) ↔ metálico (der) */}
+      <div className="flex items-center gap-1.5" style={{ width: size }} title="Acabado: mate ↔ metálico">
+        <span className="text-[8px] text-white/40 uppercase tracking-wider shrink-0">Mate</span>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={finish}
+          onChange={(e) => onFinish(parseFloat(e.target.value))}
+          className="flex-1 h-1 accent-white cursor-pointer"
+        />
+        <span className="text-[8px] text-white/40 uppercase tracking-wider shrink-0">Metal</span>
+      </div>
     </div>
   )
 }
@@ -96,12 +100,12 @@ function LoadingScreen() {
 }
 
 export default function Home() {
-  const { paintColor, setPaintColor, paintAlpha, setPaintAlpha, decalColor, setDecalColor, decalAlpha, setDecalAlpha, interiorTint, setInteriorTint, rimColor, setRimColor, valleyColor, setValleyColor, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
+  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorFinish, setInteriorFinish, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
   const [activeTab, setActiveTab] = useState<null | 'pintura' | 'interior' | 'llantas' | 'luz' | 'cargar' | 'guardar'>(null)
   // Perfiles de color guardados (localStorage del navegador)
-  type Perfil = { name: string; cfg: { paintColor: string; paintAlpha: number; decalColor: string; decalAlpha: number; interiorTint: string; rimColor: string; valleyColor: string; environment: string } }
+  type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorFinish?: number; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string } }
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [nombrePerfil, setNombrePerfil] = useState('')
   useEffect(() => {
@@ -110,7 +114,7 @@ export default function Home() {
   const guardarPerfil = () => {
     const name = nombrePerfil.trim()
     if (!name) return
-    const cfg = { paintColor, paintAlpha, decalColor, decalAlpha, interiorTint, rimColor, valleyColor, environment }
+    const cfg = { paintColor, paintFinish, decalColor, decalFinish, interiorTint, interiorFinish, rimColor, rimFinish, valleyColor, valleyFinish, environment }
     const nuevos = [...perfiles.filter((p) => p.name !== name), { name, cfg }]
     setPerfiles(nuevos)
     localStorage.setItem('gw_perfiles', JSON.stringify(nuevos))
@@ -118,10 +122,11 @@ export default function Home() {
     setActiveTab(null)
   }
   const cargarPerfil = (p: Perfil) => {
-    setPaintColor(p.cfg.paintColor); setPaintAlpha(p.cfg.paintAlpha)
-    setDecalColor(p.cfg.decalColor); setDecalAlpha(p.cfg.decalAlpha)
-    setInteriorTint(p.cfg.interiorTint)
-    setRimColor(p.cfg.rimColor); setValleyColor(p.cfg.valleyColor)
+    setPaintColor(p.cfg.paintColor); setPaintFinish(p.cfg.paintFinish ?? 0.85)
+    setDecalColor(p.cfg.decalColor); setDecalFinish(p.cfg.decalFinish ?? 0)
+    setInteriorTint(p.cfg.interiorTint); setInteriorFinish(p.cfg.interiorFinish ?? 0)
+    setRimColor(p.cfg.rimColor); setRimFinish(p.cfg.rimFinish ?? 1)
+    setValleyColor(p.cfg.valleyColor); setValleyFinish(p.cfg.valleyFinish ?? 0.4)
     setEnvironment(p.cfg.environment as Parameters<typeof setEnvironment>[0])
   }
   const borrarPerfil = (name: string) => {
@@ -223,7 +228,7 @@ export default function Home() {
             <div className="flex items-center gap-5 px-2 pt-3 pb-1">
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Pintura</span>
-                <ColorPickerRGB hex={paintColor} alpha={paintAlpha} onHex={setPaintColor} onAlpha={setPaintAlpha} size={86} />
+                <ColorPickerRGB hex={paintColor} finish={paintFinish} onHex={setPaintColor} onFinish={setPaintFinish} size={86} />
                 <div className="grid grid-cols-3 gap-1.5">
                   {PRESET_COLORS.map((color) => (
                     <button key={color.id} onClick={() => setPaintColor(color.hex)}
@@ -235,7 +240,7 @@ export default function Home() {
               <div className="w-px h-20 bg-white/10 shrink-0" />
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Adhesivos</span>
-                <ColorPickerRGB hex={decalColor} alpha={decalAlpha} onHex={setDecalColor} onAlpha={setDecalAlpha} size={86} />
+                <ColorPickerRGB hex={decalColor} finish={decalFinish} onHex={setDecalColor} onFinish={setDecalFinish} size={86} />
                 <div className="grid grid-cols-3 gap-1.5">
                   {PRESET_DECALS.map((d) => (
                     <button key={d.id} onClick={() => setDecalColor(d.hex)}
@@ -269,7 +274,7 @@ export default function Home() {
               <div className="w-px h-20 bg-white/10 shrink-0" />
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Tono del cuero</span>
-                <ColorPickerRGB hex={interiorTint} alpha={1} onHex={setInteriorTint} onAlpha={() => {}} size={86} />
+                <ColorPickerRGB hex={interiorTint} finish={interiorFinish} onHex={setInteriorTint} onFinish={setInteriorFinish} size={86} />
               </div>
             </div>
           )}
@@ -278,7 +283,7 @@ export default function Home() {
             <div className="flex items-center gap-5 px-2 pt-3 pb-1 justify-center">
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Cromado</span>
-                <ColorPickerRGB hex={rimColor} alpha={1} onHex={setRimColor} onAlpha={() => {}} size={86} />
+                <ColorPickerRGB hex={rimColor} finish={rimFinish} onHex={setRimColor} onFinish={setRimFinish} size={86} />
                 <div className="grid grid-cols-3 gap-1.5">
                   {PRESET_RIMS.map((rim) => (
                     <button key={rim.id} onClick={() => setRimColor(rim.hex)}
@@ -290,7 +295,7 @@ export default function Home() {
               <div className="w-px h-20 bg-white/10 shrink-0" />
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Valle</span>
-                <ColorPickerRGB hex={valleyColor} alpha={1} onHex={setValleyColor} onAlpha={() => {}} size={86} />
+                <ColorPickerRGB hex={valleyColor} finish={valleyFinish} onHex={setValleyColor} onFinish={setValleyFinish} size={86} />
                 <div className="grid grid-cols-3 gap-1.5">
                   {PRESET_VALLEYS.map((v) => (
                     <button key={v.id} onClick={() => setValleyColor(v.hex)}
