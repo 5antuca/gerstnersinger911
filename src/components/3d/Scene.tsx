@@ -36,10 +36,9 @@ export function Scene() {
         // de Blender por construcción (con los colores base horneados en el GLB).
         // Ver vault: Pipeline_GLB_Source_of_Truth.
         toneMapping: THREE.AgXToneMapping,
-        // +12% exposición: el interior medía ~1.4x más oscuro que el Material
-        // Preview de v5 (three.js no rebota luz como Eevee). Medido con readPixels
-        // sobre la vista exacta de CamInterior. AgX hace rolloff → no quema el exterior.
-        toneMappingExposure: 1.12,
+        // Exposición 1.0 = paridad exacta con Blender (GLB v10 autocontenido +
+        // mismo forest.hdr @1.0). El +12% era una calibración de la era v9.
+        toneMappingExposure: 1.0,
         powerPreference: 'high-performance',
       }}
       onCreated={(state) => {
@@ -55,16 +54,18 @@ export function Scene() {
         onIncline={() => setDpr(1.5)}
       />
 
-      {/* Fondo: domo gris con degradé sutil (gris al horizonte → más oscuro arriba/abajo).
-          En vez de un color plano, da sensación de estar dentro de un estudio/HDRI al
-          rotar. BackSide + unlit + toneMapped:false → grises predecibles (AgX no los altera). */}
+      {/* Fondo: con el entorno "real" el fondo es el propio forest.hdr blureado
+          (igual que el setup FONDO_CAMARA del .blend). Para el resto de los
+          presets se mantiene el domo gris con degradé. */}
       <color attach="background" args={['#131316']} />
-      <mesh scale={60} renderOrder={-1}>
-        <sphereGeometry args={[1, 64, 64]} />
-        <meshBasicMaterial side={THREE.BackSide} depthWrite={false} toneMapped={false}>
-          <GradientTexture stops={[0, 0.5, 1]} colors={['#0e0e11', '#2c2d33', '#121216']} size={1024} />
-        </meshBasicMaterial>
-      </mesh>
+      {environment !== 'real' && (
+        <mesh scale={60} renderOrder={-1}>
+          <sphereGeometry args={[1, 64, 64]} />
+          <meshBasicMaterial side={THREE.BackSide} depthWrite={false} toneMapped={false}>
+            <GradientTexture stops={[0, 0.5, 1]} colors={['#0e0e11', '#2c2d33', '#121216']} size={1024} />
+          </meshBasicMaterial>
+        </mesh>
+      )}
 
       <Suspense fallback={null}>
         <Car />
@@ -85,7 +86,17 @@ export function Scene() {
             Preset de drei elegido por el usuario desde el selector "Entorno".
             environmentIntensity 1.0 = strength 1.0 del World.
             key fuerza el remount al cambiar de preset para recargar el HDRI. */}
-        {environment === 'v5' ? (
+        {environment === 'real' ? (
+          /* forest.hdr REAL del .blend de producción, strength 1.0, y de fondo el
+             mismo HDRI blureado (= FONDO_CAMARA del World de Blender). */
+          <Environment
+            key="real"
+            files="/env/forest.hdr"
+            environmentIntensity={1.0}
+            background
+            backgroundBlurriness={0.25}
+          />
+        ) : environment === 'v5' ? (
           /* HDRI sunset.exr REAL de Blender → matchea la Vista Materiales de v5
              (misma intensidad 1.618 + rotación que el studiolight). */
           <Environment
@@ -97,7 +108,7 @@ export function Scene() {
         ) : (
           <Environment
             key={environment}
-            preset={environment as Exclude<typeof environment, 'v5'>}
+            preset={environment as Exclude<typeof environment, 'v5' | 'real'>}
             environmentIntensity={1.0}
           />
         )}
