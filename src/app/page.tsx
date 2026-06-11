@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react'
 import { useProgress } from '@react-three/drei'
 import { Scene } from '@/components/3d/Scene'
-import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS } from '@/store/useConfiguratorStore'
+import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS, PRESET_DECALS } from '@/store/useConfiguratorStore'
 import Image from 'next/image'
 import Wheel from '@uiw/react-color-wheel'
 import ShadeSlider from '@uiw/react-color-shade-slider'
@@ -96,9 +96,10 @@ function LoadingScreen() {
 }
 
 export default function Home() {
-  const { paintColor, setPaintColor, paintAlpha, setPaintAlpha, decalColor, setDecalColor, decalAlpha, setDecalAlpha, rimStyle, setRimStyle, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
+  const { paintColor, setPaintColor, paintAlpha, setPaintAlpha, decalColor, setDecalColor, decalAlpha, setDecalAlpha, interiorTint, setInteriorTint, rimStyle, setRimStyle, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
+  const [activeTab, setActiveTab] = useState<null | 'pintura' | 'interior' | 'llantas' | 'luz'>(null)
 
   // Estilos compartidos del bottom bar. Cada tab revela su panel SOLO al pasar el
   // cursor por encima (hover), via group-hover. El `pb-3` del wrapper hace de puente
@@ -163,142 +164,111 @@ export default function Home() {
         </button>
       </header>
 
-      {/* ── BOTTOM BAR ── tabs con menú hover (el panel sale al pasar el cursor) */}
-      <nav className={`absolute bottom-6 left-0 right-0 z-30 flex justify-center px-3 pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-        <div className="pointer-events-auto bg-black/30 backdrop-blur-xl border border-white/10 rounded-full p-1 flex gap-0.5 sm:gap-1">
+      {/* ── BOTTOM BAR ── la barra ES el menú: al elegir un tab se expande
+          horizontalmente con los controles inline (nada tapa el vehículo). */}
+      <nav className={`absolute bottom-5 left-0 right-0 z-30 flex justify-center px-3 pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className="pointer-events-auto bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 rounded-3xl px-3 py-2 shadow-2xl max-w-[96vw] overflow-x-auto">
+          {/* fila de tabs */}
+          <div className="flex gap-1 justify-center">
+            {([
+              ['pintura', 'Pintura'],
+              ['interior', 'Interior'],
+              ['llantas', 'Llantas'],
+              ['luz', 'Luz'],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(activeTab === id ? null : id)}
+                className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium tracking-wide transition-all duration-300 whitespace-nowrap ${
+                  activeTab === id ? 'bg-white text-black' : 'text-white/65 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-          {/* Pintura */}
-          <div className="group relative">
-            <button className={tabBtn}>Pintura</button>
-            <div className={popWrap}>
-              <div className={`${popCard} flex gap-6`}>
-                {/* Pintura exterior: rueda RGB completa + brillo + opacidad */}
-                <div className="flex flex-col items-center">
-                  <h3 className={popTitle}>Pintura Exterior</h3>
-                  <ColorPickerRGB
-                    hex={paintColor}
-                    alpha={paintAlpha}
-                    onHex={setPaintColor}
-                    onAlpha={setPaintAlpha}
-                    size={150}
-                  />
-                  <div className="flex flex-wrap gap-1.5 justify-center max-w-[170px] mt-3">
-                    {PRESET_COLORS.map((color) => (
-                      <button
-                        key={color.id}
-                        onClick={() => setPaintColor(color.hex)}
-                        className={swatchCls(paintColor === color.hex)}
-                        style={{ backgroundColor: color.hex }}
-                        title={color.name}
-                        aria-label={`Pintura ${color.name}`}
-                      />
-                    ))}
-                  </div>
+          {/* contenido inline del tab activo (horizontal, compacto) */}
+          {activeTab === 'pintura' && (
+            <div className="flex items-center gap-5 px-2 pt-3 pb-1">
+              <div className="flex items-center gap-3">
+                <span className={popTitle + ' !mb-0 shrink-0'}>Pintura</span>
+                <ColorPickerRGB hex={paintColor} alpha={paintAlpha} onHex={setPaintColor} onAlpha={setPaintAlpha} size={86} />
+                <div className="grid grid-cols-3 gap-1.5">
+                  {PRESET_COLORS.map((color) => (
+                    <button key={color.id} onClick={() => setPaintColor(color.hex)}
+                      className={swatchCls(paintColor === color.hex)}
+                      style={{ backgroundColor: color.hex }} title={color.name} aria-label={`Pintura ${color.name}`} />
+                  ))}
                 </div>
-                {/* Adhesivos: mismo selector para franjas + banda PORSCHE */}
-                <div className="flex flex-col items-center">
-                  <h3 className={popTitle}>Adhesivos</h3>
-                  <ColorPickerRGB
-                    hex={decalColor}
-                    alpha={decalAlpha}
-                    onHex={setDecalColor}
-                    onAlpha={setDecalAlpha}
-                    size={150}
-                  />
+              </div>
+              <div className="w-px h-20 bg-white/10 shrink-0" />
+              <div className="flex items-center gap-3">
+                <span className={popTitle + ' !mb-0 shrink-0'}>Adhesivos</span>
+                <ColorPickerRGB hex={decalColor} alpha={decalAlpha} onHex={setDecalColor} onAlpha={setDecalAlpha} size={86} />
+                <div className="grid grid-cols-3 gap-1.5">
+                  {PRESET_DECALS.map((d) => (
+                    <button key={d.id} onClick={() => setDecalColor(d.hex)}
+                      className={swatchCls(decalColor === d.hex)}
+                      style={{ backgroundColor: d.hex }} title={d.name} aria-label={`Adhesivos ${d.name}`} />
+                  ))}
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Interior */}
-          <div className="group relative">
-            <button className={tabBtn}>Interior</button>
-            <div className={popWrap}>
-              <div className={`${popCard} flex flex-col items-center gap-3`}>
-                <div className="relative rounded-xl overflow-hidden ring-1 ring-white/10" style={{ width: 210, height: 210 }}>
-                  {PRESET_INTERIORS.map((interior) => (
-                    <Image
-                      key={interior.id}
-                      src={interior.image}
-                      alt={interior.name}
-                      fill
-                      sizes="210px"
-                      className={`object-cover transition-opacity duration-500 ${
-                        interiorColor.id === interior.id ? 'opacity-100' : 'opacity-0'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-1.5 justify-center max-w-[240px]">
+          {activeTab === 'interior' && (
+            <div className="flex items-center gap-5 px-2 pt-3 pb-1">
+              <div className="flex items-center gap-3">
+                <span className={popTitle + ' !mb-0 shrink-0'}>Interior</span>
+                <div className="grid grid-cols-2 gap-1.5">
                   {PRESET_INTERIORS.map((interior) => (
                     <button
                       key={interior.id}
-                      onClick={() => setInteriorColor(interior)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition-all duration-300 ${
-                        interiorColor.id === interior.id
-                          ? 'bg-white text-black'
-                          : 'text-white/70 hover:text-white hover:bg-white/10'
+                      onClick={() => { setInteriorColor(interior); setInteriorTint(interior.tint) }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition-all duration-300 whitespace-nowrap ${
+                        interiorColor.id === interior.id ? 'bg-white text-black' : 'text-white/70 hover:text-white hover:bg-white/10'
                       }`}
                     >
-                      <span
-                        className="w-3 h-3 rounded-full border border-black/20 shrink-0"
-                        style={{ backgroundColor: interior.hex }}
-                      />
+                      <span className="w-3 h-3 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: interior.hex }} />
                       {interior.name}
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Llantas */}
-          <div className="group relative">
-            <button className={tabBtn}>Llantas</button>
-            <div className={popWrap}>
-              <div className={popCard}>
-                <h3 className={popTitle}>Diseño de Llantas</h3>
-                <div className="flex flex-wrap gap-2 justify-center max-w-[260px]">
-                  {PRESET_RIMS.map((rim) => (
-                    <button
-                      key={rim.id}
-                      onClick={() => setRimStyle(rim)}
-                      className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-300 ${
-                        rimStyle.id === rim.id
-                          ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.2)] scale-105'
-                          : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      {rim.name}
-                    </button>
-                  ))}
-                </div>
+              <div className="w-px h-20 bg-white/10 shrink-0" />
+              <div className="flex items-center gap-3">
+                <span className={popTitle + ' !mb-0 shrink-0'}>Tono del cuero</span>
+                <ColorPickerRGB hex={interiorTint} alpha={1} onHex={setInteriorTint} onAlpha={() => {}} size={86} />
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Luz */}
-          <div className="group relative">
-            <button className={tabBtn}>Luz</button>
-            <div className={popWrap}>
-              <div className={popCard}>
-                <h3 className={popTitle}>Iluminación</h3>
-                <div className="flex flex-wrap gap-2 justify-center max-w-[200px]">
-                  {PRESET_ENVIRONMENTS.map((env) => (
-                    <button
-                      key={env.id}
-                      onClick={() => setEnvironment(env.id)}
-                      className={swatchCls(environment === env.id)}
-                      style={{ backgroundColor: env.swatch }}
-                      title={env.name}
-                      aria-label={`Iluminación ${env.name}`}
-                    />
-                  ))}
-                </div>
-              </div>
+          {activeTab === 'llantas' && (
+            <div className="flex items-center justify-center gap-2 px-2 pt-3 pb-1">
+              {PRESET_RIMS.map((rim) => (
+                <button key={rim.id} onClick={() => setRimStyle(rim)}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-300 whitespace-nowrap ${
+                    rimStyle.id === rim.id
+                      ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.2)] scale-105'
+                      : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {rim.name}
+                </button>
+              ))}
             </div>
-          </div>
+          )}
 
+          {activeTab === 'luz' && (
+            <div className="flex items-center justify-center gap-2 px-2 pt-3 pb-1">
+              {PRESET_ENVIRONMENTS.map((env) => (
+                <button key={env.id} onClick={() => setEnvironment(env.id)}
+                  className={swatchCls(environment === env.id)}
+                  style={{ backgroundColor: env.swatch }} title={env.name} aria-label={`Iluminación ${env.name}`} />
+              ))}
+            </div>
+          )}
         </div>
       </nav>
     </main>
