@@ -18,3 +18,31 @@ body {
   padding: 0;
   overflow: hidden;
 }
+
+/* ── Gate de orientación ──
+   El configurador está diseñado apaisado: en teléfonos verticales el overlay
+   .rotate-gate (page.tsx) cubre la UI y pide girar el dispositivo. */
+.rotate-gate {
+  display: none;
+}
+
+@media (orientation: portrait) and (max-width: 767px) {
+  .rotate-gate {
+    display: flex;
+  }
+}
+
+@keyframes gate-rotate {
+  0%,
+  25% {
+    transform: rotate(0deg);
+  }
+  60%,
+  100% {
+    transform: rotate(-90deg);
+  }
+}
+
+.rotate-gate-icon {
+  animation: gate-rotate 2s cubic-bezier(0.45, 0, 0.2, 1) infinite alternate;
+}

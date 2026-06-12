@@ -46,8 +46,9 @@ function ColorPickerRGB({
           onHex(hsvaToHex(next))
         }}
       />
-      {/* Acabado: mate (izq) ↔ metálico (der) */}
-      <div className="flex items-center gap-1.5" style={{ width: size }} title="Acabado: mate ↔ metálico">
+      {/* Acabado: mate (izq) ↔ metálico (der). min-w-0 en el range: sin él su
+          min-width intrínseco (~130px) infla la fila y desborda el panel en mobile. */}
+      <div className="flex items-center gap-1.5" style={{ width: size + 44 }} title="Acabado: mate ↔ metálico">
         <span className="text-[8px] text-white/40 uppercase tracking-wider shrink-0">Mate</span>
         <input
           type="range"
@@ -56,7 +57,7 @@ function ColorPickerRGB({
           step={0.01}
           value={finish}
           onChange={(e) => onFinish(parseFloat(e.target.value))}
-          className="flex-1 h-1 accent-white cursor-pointer"
+          className="flex-1 h-1 accent-white cursor-pointer min-w-0"
         />
         <span className="text-[8px] text-white/40 uppercase tracking-wider shrink-0">Metal</span>
       </div>
@@ -99,11 +100,27 @@ function LoadingScreen() {
   )
 }
 
+/* Media query reactiva (SSR-safe: arranca en false y se resuelve al montar). */
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia(query)
+    const onChange = () => setMatches(mq.matches)
+    onChange()
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [query])
+  return matches
+}
+
 export default function Home() {
   const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorFinish, setInteriorFinish, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
   const [activeTab, setActiveTab] = useState<null | 'pintura' | 'interior' | 'llantas' | 'luz' | 'cargar' | 'guardar'>(null)
+  // Teléfono apaisado (viewport bajo): compacta el bottom bar para no tapar el auto.
+  const compact = useMediaQuery('(max-height: 480px)')
+  const wheelSize = compact ? 54 : 86
   // Perfiles de color guardados (localStorage del navegador)
   type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorFinish?: number; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string } }
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
@@ -142,8 +159,12 @@ export default function Home() {
   const popWrap = 'absolute bottom-full left-1/2 -translate-x-1/2 pb-3 opacity-0 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300'
   const popCard = 'bg-[#0a0a0a]/70 backdrop-blur-2xl border border-white/10 rounded-2xl px-4 py-3 shadow-2xl'
   const popTitle = 'text-[9px] font-semibold text-white/50 mb-2.5 tracking-widest uppercase text-center'
+  // w-max + mx-auto: centrado cuando entra, y si desborda el scroll-x arranca
+  // en 0 (justify-center con overflow deja la punta izquierda inalcanzable).
+  const panelRow = `w-max mx-auto flex items-center ${compact ? 'gap-3 px-1 pt-2' : 'gap-5 px-2 pt-3'} pb-1`
+  const dividerCls = `w-px ${compact ? 'h-14' : 'h-20'} bg-white/10 shrink-0`
   const swatchCls = (active: boolean) =>
-    `w-6 h-6 rounded-full cursor-pointer transition-all duration-300 ${
+    `${compact ? 'w-5 h-5' : 'w-6 h-6'} rounded-full cursor-pointer transition-all duration-300 ${
       active
         ? 'scale-110 ring-2 ring-white shadow-[0_0_12px_rgba(255,255,255,0.25)]'
         : 'ring-1 ring-white/10 hover:ring-white/40'
@@ -152,10 +173,44 @@ export default function Home() {
   return (
     <main
       className="w-screen h-screen text-white overflow-hidden font-sans selection:bg-white/20 relative"
-      style={{ background: 'radial-gradient(ellipse at top, #3a3c42 0%, #1e2024 40%, #0e0f12 100%)' }}
+      // 100dvh: en mobile, 100vh queda detrás del chrome del browser y tapa el
+      // bottom bar (h-screen es el fallback si el browser no soporta dvh).
+      style={{ background: 'radial-gradient(ellipse at top, #3a3c42 0%, #1e2024 40%, #0e0f12 100%)', height: '100dvh' }}
     >
       {/* Loading Screen — usa useProgress de drei para el progreso real del GLB */}
       <LoadingScreen />
+
+      {/* ── GATE DE ORIENTACIÓN ── el configurador está diseñado apaisado: en
+          teléfonos verticales este overlay cubre todo y pide girar el
+          dispositivo (display lo maneja .rotate-gate en globals.css). */}
+      <div
+        className="rotate-gate fixed inset-0 z-[70] flex-col items-center justify-center gap-3 text-center px-10"
+        style={{ background: 'radial-gradient(ellipse at top, #3a3c42 0%, #1e2024 40%, #0e0f12 100%)' }}
+      >
+        <Image
+          src="/img/logopage.webp"
+          alt="Gerstner Werks"
+          width={110}
+          height={37}
+          className="object-contain h-auto w-[110px] opacity-90 mb-8"
+        />
+        <svg
+          className="rotate-gate-icon text-white/70"
+          width="40"
+          height="40"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <rect x="7.5" y="2.5" width="9" height="19" rx="2.2" />
+          <line x1="10.2" y1="18.6" x2="13.8" y2="18.6" />
+        </svg>
+        <p className="text-white/85 text-sm font-medium tracking-wide mt-2">Girá el teléfono</p>
+        <p className="text-white/40 text-xs">El configurador se usa en pantalla horizontal</p>
+      </div>
 
       {/* 3D Canvas - siempre detrás, nítido (sin blur de tabs) */}
       <div className={`absolute inset-0 z-0 transition-all duration-[1200ms] ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
@@ -165,7 +220,7 @@ export default function Home() {
       </div>
 
       {/* ── HEADER ── logo (izq, más grande/menos sombra) + botón pausar giro (der) */}
-      <header className={`absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-3 sm:px-8 pt-4 sm:pt-6 pb-0 pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+      <header className={`absolute top-0 left-0 right-0 z-30 flex items-center justify-between ${compact ? 'px-3 pt-2.5' : 'px-3 sm:px-8 pt-4 sm:pt-6'} pb-0 pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
         {/* Logo */}
         <div className="pointer-events-auto shrink-0">
           <Image
@@ -173,7 +228,7 @@ export default function Home() {
             alt="Gerstner Werks Logo"
             width={180}
             height={60}
-            className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)] opacity-100 object-contain h-auto w-[100px] sm:w-[158px]"
+            className={`drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)] opacity-100 object-contain h-auto ${compact ? 'w-[70px]' : 'w-[100px] sm:w-[158px]'}`}
             priority
           />
         </div>
@@ -183,10 +238,10 @@ export default function Home() {
 
       {/* ── BOTTOM BAR ── la barra ES el menú: al elegir un tab se expande
           horizontalmente con los controles inline (nada tapa el vehículo). */}
-      <nav className={`absolute bottom-5 left-0 right-0 z-30 flex justify-center px-3 pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+      <nav className={`absolute ${compact ? 'bottom-3' : 'bottom-5'} left-0 right-0 z-30 flex justify-center pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
         <button
           onClick={toggleAutoRotate}
-          className="pointer-events-auto shrink-0 self-start w-10 h-10 mr-2 rounded-full bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300"
+          className={`pointer-events-auto shrink-0 self-start ${compact ? 'w-8 h-8' : 'w-10 h-10'} mr-2 rounded-full bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300`}
           title={autoRotate ? 'Pausar giro' : 'Reanudar giro'}
           aria-label={autoRotate ? 'Pausar giro' : 'Reanudar giro'}
         >
@@ -201,9 +256,9 @@ export default function Home() {
             </svg>
           )}
         </button>
-        <div className="pointer-events-auto bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 rounded-3xl px-3 py-2 shadow-2xl max-w-[88vw] overflow-x-auto">
+        <div className={`pointer-events-auto bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 rounded-3xl ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} shadow-2xl max-w-[88vw] overflow-x-auto`}>
           {/* fila de tabs */}
-          <div className="flex gap-1 justify-center">
+          <div className="w-max mx-auto flex gap-1">
             {([
               ['pintura', 'Pintura'],
               ['interior', 'Interior'],
@@ -214,7 +269,7 @@ export default function Home() {
               <button
                 key={id}
                 onClick={() => setActiveTab(activeTab === id ? null : id)}
-                className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium tracking-wide transition-all duration-300 whitespace-nowrap ${
+                className={`${compact ? 'px-3 py-1 text-[11px]' : 'px-4 py-1.5 text-xs sm:text-sm'} rounded-full font-medium tracking-wide transition-all duration-300 whitespace-nowrap ${
                   activeTab === id ? 'bg-white text-black' : 'text-white/65 hover:text-white hover:bg-white/10'
                 }`}
               >
@@ -225,10 +280,10 @@ export default function Home() {
 
           {/* contenido inline del tab activo (horizontal, compacto) */}
           {activeTab === 'pintura' && (
-            <div className="flex items-center gap-5 px-2 pt-3 pb-1">
+            <div className={panelRow}>
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Pintura</span>
-                <ColorPickerRGB hex={paintColor} finish={paintFinish} onHex={setPaintColor} onFinish={setPaintFinish} size={86} />
+                <ColorPickerRGB hex={paintColor} finish={paintFinish} onHex={setPaintColor} onFinish={setPaintFinish} size={wheelSize} />
                 <div className="grid grid-cols-3 gap-1.5">
                   {PRESET_COLORS.map((color) => (
                     <button key={color.id} onClick={() => setPaintColor(color.hex)}
@@ -237,10 +292,10 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-              <div className="w-px h-20 bg-white/10 shrink-0" />
+              <div className={dividerCls} />
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Adhesivos</span>
-                <ColorPickerRGB hex={decalColor} finish={decalFinish} onHex={setDecalColor} onFinish={setDecalFinish} size={86} />
+                <ColorPickerRGB hex={decalColor} finish={decalFinish} onHex={setDecalColor} onFinish={setDecalFinish} size={wheelSize} />
                 <div className="grid grid-cols-3 gap-1.5">
                   {PRESET_DECALS.map((d) => (
                     <button key={d.id} onClick={() => setDecalColor(d.hex)}
@@ -253,7 +308,7 @@ export default function Home() {
           )}
 
           {activeTab === 'interior' && (
-            <div className="flex items-center gap-5 px-2 pt-3 pb-1">
+            <div className={panelRow}>
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Interior</span>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -261,7 +316,7 @@ export default function Home() {
                     <button
                       key={interior.id}
                       onClick={() => { setInteriorColor(interior); setInteriorTint(interior.tint) }}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 transition-all duration-300 whitespace-nowrap ${
+                      className={`${compact ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'} rounded-full font-medium flex items-center gap-2 transition-all duration-300 whitespace-nowrap ${
                         interiorColor.id === interior.id ? 'bg-white text-black' : 'text-white/70 hover:text-white hover:bg-white/10'
                       }`}
                     >
@@ -271,19 +326,19 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-              <div className="w-px h-20 bg-white/10 shrink-0" />
+              <div className={dividerCls} />
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Tono del cuero</span>
-                <ColorPickerRGB hex={interiorTint} finish={interiorFinish} onHex={setInteriorTint} onFinish={setInteriorFinish} size={86} />
+                <ColorPickerRGB hex={interiorTint} finish={interiorFinish} onHex={setInteriorTint} onFinish={setInteriorFinish} size={wheelSize} />
               </div>
             </div>
           )}
 
           {activeTab === 'llantas' && (
-            <div className="flex items-center gap-5 px-2 pt-3 pb-1 justify-center">
+            <div className={panelRow}>
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Cromado</span>
-                <ColorPickerRGB hex={rimColor} finish={rimFinish} onHex={setRimColor} onFinish={setRimFinish} size={86} />
+                <ColorPickerRGB hex={rimColor} finish={rimFinish} onHex={setRimColor} onFinish={setRimFinish} size={wheelSize} />
                 <div className="grid grid-cols-3 gap-1.5">
                   {PRESET_RIMS.map((rim) => (
                     <button key={rim.id} onClick={() => setRimColor(rim.hex)}
@@ -292,10 +347,10 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-              <div className="w-px h-20 bg-white/10 shrink-0" />
+              <div className={dividerCls} />
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Valle</span>
-                <ColorPickerRGB hex={valleyColor} finish={valleyFinish} onHex={setValleyColor} onFinish={setValleyFinish} size={86} />
+                <ColorPickerRGB hex={valleyColor} finish={valleyFinish} onHex={setValleyColor} onFinish={setValleyFinish} size={wheelSize} />
                 <div className="grid grid-cols-3 gap-1.5">
                   {PRESET_VALLEYS.map((v) => (
                     <button key={v.id} onClick={() => setValleyColor(v.hex)}
@@ -316,7 +371,7 @@ export default function Home() {
                 onChange={(e) => setNombrePerfil(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') guardarPerfil() }}
                 placeholder="ej: Azul oro clasico"
-                className="bg-white/10 border border-white/15 rounded-full px-4 py-1.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/40 w-52"
+                className={`bg-white/10 border border-white/15 rounded-full px-4 ${compact ? 'py-1 text-xs w-44' : 'py-1.5 text-sm w-52'} text-white placeholder-white/30 outline-none focus:border-white/40`}
               />
               <button
                 onClick={guardarPerfil}
@@ -358,7 +413,7 @@ export default function Home() {
         </div>
         <button
           onClick={() => setActiveTab(activeTab === 'guardar' ? null : 'guardar')}
-          className={`pointer-events-auto shrink-0 self-start w-10 h-10 ml-2 rounded-full backdrop-blur-2xl border border-white/10 flex items-center justify-center transition-all duration-300 ${
+          className={`pointer-events-auto shrink-0 self-start ${compact ? 'w-8 h-8' : 'w-10 h-10'} ml-2 rounded-full backdrop-blur-2xl border border-white/10 flex items-center justify-center transition-all duration-300 ${
             activeTab === 'guardar' ? 'bg-white text-black' : 'bg-[#0a0a0a]/75 text-white/70 hover:text-white hover:bg-white/10'
           }`}
           title="Guardar perfil de colores"
