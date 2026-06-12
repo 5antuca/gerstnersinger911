@@ -22,7 +22,9 @@ import { useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
 import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 
-const MODEL_URL = '/models/SingerClean-v10.glb'
+// v11 = v10 sin las franjas de paragolpes (Bumper_stripe_F/R ocultas a pedido
+// en v5/v6/web, 2026-06-12; el material Bumper_stripe_mat se purgó con ellas)
+const MODEL_URL = '/models/SingerClean-v11.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
