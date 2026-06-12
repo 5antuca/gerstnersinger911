@@ -26,6 +26,10 @@ const MODEL_URL = '/models/SingerClean-v10.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
+// Oro de fábrica de los adhesivos (DECAL_COLOR del .blend). Con este valor
+// seleccionado NO se pisa el material: se usa el factor horneado del GLB
+// (paridad exacta con Blender, igual que hacen las letras PORSCHE_L*).
+const DECAL_DEFAULT = '#c5b47a'
 // El piso lo definen las ruedas de calle (mediana de los fondos de Tire_base).
 const FLOOR_MATS = ['Tire base', 'Tire_base']
 
@@ -211,15 +215,26 @@ export function Model(props: any) {
       // (color sólido directo) + banda lateral (la textura es gris ~0.773: se
       // compensa para que el color final sea el elegido).
       if (m.name === 'Bumper_stripe_mat') {
-        m.color.set(decalColor)
+        if (!m.userData.__origColor) m.userData.__origColor = m.color.clone()
+        if (decalColor === DECAL_DEFAULT) m.color.copy(m.userData.__origColor)
+        else m.color.set(decalColor)
         m.metalness = decalFinish
         m.roughness = 0.65 - 0.4 * decalFinish
         m.needsUpdate = true
       }
       if (m.name === 'Decal_PORSCHE_tex') {
-        const c = new THREE.Color(decalColor)
-        c.multiplyScalar(1 / 0.773)
-        m.color.copy(c)
+        if (!m.userData.__origColor) m.userData.__origColor = m.color.clone()
+        if (decalColor === DECAL_DEFAULT) {
+          m.color.copy(m.userData.__origColor)
+        } else {
+          // La textura de la banda es gris 197 sRGB = 0.5575 LINEAL, y el
+          // shader multiplica factor×texel en LINEAL: compensar con el valor
+          // lineal. (El 0.773 sRGB anterior dejaba los claros grises: blanco
+          // elegido rendía #dfdfdf.)
+          const c = new THREE.Color(decalColor)
+          c.multiplyScalar(1 / 0.5575)
+          m.color.copy(c)
+        }
         m.metalness = decalFinish
         m.roughness = 0.65 - 0.4 * decalFinish
         m.needsUpdate = true

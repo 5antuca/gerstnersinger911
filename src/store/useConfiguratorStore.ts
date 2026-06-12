@@ -42,7 +42,7 @@ export const PRESET_INTERIORS = [
 // El primero es el oro de fábrica del auto (DECAL_COLOR del .blend).
 export const PRESET_DECALS = [
   { id: 'oro-gerstner', hex: '#c5b47a', name: 'Oro Gerstner' },
-  { id: 'blanco', hex: '#e8e6e0', name: 'Blanco' },
+  { id: 'blanco', hex: '#ffffff', name: 'Blanco' },
   { id: 'negro', hex: '#1c1c1c', name: 'Negro' },
   { id: 'rojo', hex: '#b02020', name: 'Rojo' },
   { id: 'plata', hex: '#cfcfcf', name: 'Plata' },
