@@ -175,9 +175,14 @@ export function Model(props: any) {
   // Selectores dinámicos: pintura + llantas + adhesivos.
   useLayoutEffect(() => {
     paintMaterial.color.set(paintColor)
-    // mate(0)↔metalico(1); en 0.85 = la pintura flake actual exacta
+    // mate(0)↔metalico(1), calibrado para que f=0.85 reproduzca EXACTO la
+    // pintura flake aprobada (metal .85 / rough .42 / clearcoat 1 / env 1.7).
+    // El mate real lo da apagar el CLEARCOAT (la laca): con clearcoat fijo
+    // nada se matea por mas que baje metalness.
     paintMaterial.metalness = paintFinish
-    paintMaterial.roughness = 0.55 - 0.15 * paintFinish
+    paintMaterial.roughness = 0.9 - 0.562 * paintFinish
+    paintMaterial.clearcoat = Math.min(1, paintFinish * 1.18)
+    paintMaterial.envMapIntensity = 1.0 + 0.82 * paintFinish
     paintMaterial.needsUpdate = true
     applyToMaterials((m) => {
       // Cromados de la llanta: radios+labio (Fuchs_spoke*), centro
@@ -189,7 +194,8 @@ export function Model(props: any) {
             ml.startsWith('bolt_wheel') || ml.startsWith('valve_metal')) {
           m.color.set(rimColor)
           m.metalness = rimFinish
-          m.roughness = 0.65 - 0.23 * rimFinish
+          // metal(1) = rough .42 (cromo aprobado); mate(0) sube a .78
+          m.roughness = 0.78 - 0.36 * rimFinish
           if (ml.startsWith('fuchs_spoke')) m.envMapIntensity = 0.8
           m.needsUpdate = true
         }
@@ -197,7 +203,7 @@ export function Model(props: any) {
         if (ml.startsWith('fuchs_valley')) {
           m.color.set(valleyColor)
           m.metalness = valleyFinish
-          m.roughness = 0.66 - 0.27 * valleyFinish
+          m.roughness = 0.8 - 0.41 * valleyFinish
           m.needsUpdate = true
         }
       }
@@ -207,7 +213,7 @@ export function Model(props: any) {
       if (m.name === 'Bumper_stripe_mat') {
         m.color.set(decalColor)
         m.metalness = decalFinish
-        m.roughness = 0.45 - 0.2 * decalFinish
+        m.roughness = 0.65 - 0.4 * decalFinish
         m.needsUpdate = true
       }
       if (m.name === 'Decal_PORSCHE_tex') {
@@ -215,7 +221,7 @@ export function Model(props: any) {
         c.multiplyScalar(1 / 0.773)
         m.color.copy(c)
         m.metalness = decalFinish
-        m.roughness = 0.45 - 0.2 * decalFinish
+        m.roughness = 0.65 - 0.4 * decalFinish
         m.needsUpdate = true
       }
       // Tinte del interior (cuero + trenzado): multiplica el color ORIGINAL
@@ -244,7 +250,7 @@ export function Model(props: any) {
       const aplicar = (m: THREE.MeshStandardMaterial) => {
         m.color.set(decalColor)
         m.metalness = Math.max(decalFinish, 0.3)
-        m.roughness = 0.45 - 0.2 * decalFinish
+        m.roughness = 0.65 - 0.4 * decalFinish
         m.needsUpdate = true
       }
       if (!o.userData.__letterMats) {
