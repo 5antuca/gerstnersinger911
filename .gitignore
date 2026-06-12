@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# storage local de perfiles (solo next dev)
+.dev-perfiles.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*

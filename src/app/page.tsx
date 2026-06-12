@@ -121,20 +121,62 @@ export default function Home() {
   // Teléfono apaisado (viewport bajo): compacta el bottom bar para no tapar el auto.
   const compact = useMediaQuery('(max-height: 480px)')
   const wheelSize = compact ? 54 : 86
-  // Perfiles de color guardados (localStorage del navegador)
-  type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorFinish?: number; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string } }
+  // Perfiles de color: localStorage = caché instantánea/offline; la fuente
+  // robusta es /api/perfiles (nube compartida entre dispositivos). Al montar
+  // se mergean por nombre (gana el updatedAt más nuevo y los tombstones de la
+  // nube tapan lo borrado) y se sube lo que la nube no tenga.
+  type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorFinish?: number; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string }; updatedAt?: number }
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [nombrePerfil, setNombrePerfil] = useState('')
+  // 'cloud' = sincronizado con la nube; 'local' = solo este navegador.
+  const [syncEstado, setSyncEstado] = useState<'cloud' | 'local'>('local')
+  const persistirLocal = (lista: Perfil[]) => {
+    try { localStorage.setItem('gw_perfiles', JSON.stringify(lista)) } catch { /* storage lleno/privado */ }
+  }
   useEffect(() => {
-    try { setPerfiles(JSON.parse(localStorage.getItem('gw_perfiles') || '[]')) } catch { /* vacio */ }
+    let local: Perfil[] = []
+    try { local = JSON.parse(localStorage.getItem('gw_perfiles') || '[]') } catch { /* corrupto */ }
+    setPerfiles(local)
+    ;(async () => {
+      try {
+        const res = await fetch('/api/perfiles', { cache: 'no-store' })
+        if (!res.ok) return
+        const { storage, perfiles: remotos, deleted } = (await res.json()) as { storage: string; perfiles: Perfil[]; deleted: { name: string; deletedAt: number }[] }
+        if (storage === 'none') return
+        const porNombre = new Map<string, Perfil>()
+        for (const p of [...remotos, ...local]) {
+          const prev = porNombre.get(p.name)
+          if (!prev || (p.updatedAt ?? 0) > (prev.updatedAt ?? 0)) porNombre.set(p.name, p)
+        }
+        for (const t of deleted ?? []) {
+          const p = porNombre.get(t.name)
+          if (p && (p.updatedAt ?? 0) <= t.deletedAt) porNombre.delete(t.name)
+        }
+        const merged = [...porNombre.values()]
+        setPerfiles(merged)
+        persistirLocal(merged)
+        setSyncEstado('cloud')
+        // subir lo que la nube no tiene o tiene más viejo (p.ej. guardado offline)
+        const remotoAt = new Map(remotos.map((p) => [p.name, p.updatedAt ?? 0]))
+        for (const p of merged) {
+          if ((remotoAt.get(p.name) ?? -1) < (p.updatedAt ?? 0)) {
+            fetch('/api/perfiles', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }).catch(() => { /* se reintenta en la próxima visita */ })
+          }
+        }
+      } catch { /* sin red: queda la copia local */ }
+    })()
   }, [])
   const guardarPerfil = () => {
     const name = nombrePerfil.trim()
     if (!name) return
     const cfg = { paintColor, paintFinish, decalColor, decalFinish, interiorTint, interiorFinish, rimColor, rimFinish, valleyColor, valleyFinish, environment }
-    const nuevos = [...perfiles.filter((p) => p.name !== name), { name, cfg }]
+    const perfil: Perfil = { name, cfg, updatedAt: Date.now() }
+    const nuevos = [...perfiles.filter((p) => p.name !== name), perfil]
     setPerfiles(nuevos)
-    localStorage.setItem('gw_perfiles', JSON.stringify(nuevos))
+    persistirLocal(nuevos)
+    fetch('/api/perfiles', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(perfil) })
+      .then((r) => setSyncEstado(r.ok ? 'cloud' : 'local'))
+      .catch(() => setSyncEstado('local'))
     setNombrePerfil('')
     setActiveTab(null)
   }
@@ -147,9 +189,18 @@ export default function Home() {
     setEnvironment(p.cfg.environment as Parameters<typeof setEnvironment>[0])
   }
   const borrarPerfil = (name: string) => {
+    if (!window.confirm(`¿Borrar el perfil "${name}"? Queda una copia en la papelera de la nube.`)) return
+    const borrado = perfiles.find((p) => p.name === name)
     const nuevos = perfiles.filter((p) => p.name !== name)
     setPerfiles(nuevos)
-    localStorage.setItem('gw_perfiles', JSON.stringify(nuevos))
+    persistirLocal(nuevos)
+    // papelera local además de la de la nube: borrar nunca destruye datos
+    try {
+      const trash = JSON.parse(localStorage.getItem('gw_perfiles_trash') || '[]')
+      trash.push({ ...borrado, deletedAt: Date.now() })
+      localStorage.setItem('gw_perfiles_trash', JSON.stringify(trash))
+    } catch { /* sin espacio: la nube guarda su copia igual */ }
+    fetch('/api/perfiles', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }).catch(() => { /* tombstone pendiente */ })
   }
 
   // Estilos compartidos del bottom bar. Cada tab revela su panel SOLO al pasar el
@@ -398,6 +449,14 @@ export default function Home() {
                     className="text-white/30 hover:text-white text-xs px-0.5">×</button>
                 </span>
               ))}
+              {perfiles.length > 0 && (
+                <span
+                  className={`text-[9px] pl-1 whitespace-nowrap ${syncEstado === 'cloud' ? 'text-white/25' : 'text-amber-200/60'}`}
+                  title={syncEstado === 'cloud' ? 'Perfiles sincronizados en la nube: disponibles desde cualquier dispositivo' : 'Guardados solo en este navegador (nube no disponible)'}
+                >
+                  {syncEstado === 'cloud' ? '☁ sincronizado' : '⚠ solo este dispositivo'}
+                </span>
+              )}
             </div>
           )}
 
