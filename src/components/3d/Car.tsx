@@ -32,7 +32,9 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 // (apoyan flush, ya no flotan) (2026-06-16)
 // v15 = v14 con Headlamp_glass en alphaMode OPAQUE (era BLEND+transmission=1, que
 // en THREE.js doble-renderiza el vidrio -> "vidrio fantasma volando"). (2026-06-16)
-const MODEL_URL = '/models/SingerClean-v15.glb'
+// v16 = v15 + mismo fix (OPAQUE) a los vidrios del paragolpes Glass_parking_light/
+// Glass_orange/Glass_red (tambien BLEND+transmission=1 -> flotaban). (2026-06-16)
+const MODEL_URL = '/models/SingerClean-v16.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
