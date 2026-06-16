@@ -42,9 +42,12 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 // PARTIDO (cover transparente separado + ambar hundido) -> el cover "flotaba". Se
 // sacaron Plane.079/119/130/131/132 y se inyecto el lente v6 Plane.075/114/123/124/125.
 // (2026-06-16)
-// v20 = v19 con el lente del paragolpes corrido +2cm en Z ("casi" despeja la linea azul).
-// v21 = +3cm (un toque mas) para despejar del todo el labio de la chapa. (2026-06-16)
-const MODEL_URL = '/models/SingerClean-v21.glb'
+// v20/v21 = mover el lente v6 adelante (no encajaba en la apertura del web -> lineas
+// azules + hundimiento). Descartado.
+// v22 = vuelve al LENTE ORIGINAL del web (encaja en su apertura) y arregla el flotado
+// moviendo SOLO el ambar (Glass_orange) +4cm adelante, para pegarse detras del cover
+// transparente (que queda en su sitio z~1.93). Sin flotar, sin lineas azules. (2026-06-16)
+const MODEL_URL = '/models/SingerClean-v22.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
