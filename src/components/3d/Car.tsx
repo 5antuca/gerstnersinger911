@@ -42,7 +42,10 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 // PARTIDO (cover transparente separado + ambar hundido) -> el cover "flotaba". Se
 // sacaron Plane.079/119/130/131/132 y se inyecto el lente v6 Plane.075/114/123/124/125.
 // (2026-06-16)
-const MODEL_URL = '/models/SingerClean-v19.glb'
+// v20 = v19 con el lente del paragolpes corrido +2cm en Z (adelante) para que su
+// borde superior asome por delante del labio de la chapa (que lo cortaba con una
+// "linea azul"). Intento de bajo riesgo antes de editar el body. (2026-06-16)
+const MODEL_URL = '/models/SingerClean-v20.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
