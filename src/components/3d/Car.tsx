@@ -42,12 +42,15 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 // PARTIDO (cover transparente separado + ambar hundido) -> el cover "flotaba". Se
 // sacaron Plane.079/119/130/131/132 y se inyecto el lente v6 Plane.075/114/123/124/125.
 // (2026-06-16)
-// v20/v21/v22 = intentos de mover el lente/ambar -> EMPEORARON (separaron blanco+naranja,
-// lineas azules). Descartados. REVERTIDO a v19 (lente solido de v6: blanco+naranja JUNTOS
-// + flotado resuelto = "vidrio perfecto" del user). Pendiente: linea azul fina a la
-// derecha de las luces de abajo (el lente de v6 no calza exacto en la apertura del body
-// del web v11). La optica redonda esta perfecta. (2026-06-16)
-const MODEL_URL = '/models/SingerClean-v19.glb'
+// v23 (2026-06-16) = FIX REAL de la "linea azul" + vidrio fantasma:
+//  - La linea azul a la derecha de las luces NO era el lente que no calza: era Plane.427,
+//    un panel Paint_ext SOLO-derecho (sin gemelo izq) que asoma entre el faro y la luz.
+//    En v6/EEVEE queda tapado por el lente; en three.js asoma. -> BORRADO (lo cubre Plane.397,
+//    no deja hueco). Confirmado por hide-test en el visor.
+//  - El "vidrio volando" no era geometria (v6 tiene la MISMA geo): era transmission=1 + BLEND
+//    = doble render en three.js. -> las 4 luces (Headlamp/parking/orange/red) a alphaMode
+//    OPAQUE conservando transmission (three.js las renderiza 1 sola vez, sin fantasma).
+const MODEL_URL = '/models/SingerClean-v23.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
