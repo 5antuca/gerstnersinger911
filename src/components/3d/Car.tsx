@@ -30,13 +30,13 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 // Rubber_tire separado) (2026-06-15)
 // v14 = v13 con las molduras traseras re-conformadas al cuerpo real del GLB web
 // (apoyan flush, ya no flotan) (2026-06-16)
-// v15 = v14 con Headlamp_glass en alphaMode OPAQUE (era BLEND+transmission=1, que
-// en THREE.js doble-renderiza el vidrio -> "vidrio fantasma volando"). (2026-06-16)
-// v16 = v15 + mismo fix (OPAQUE) a los vidrios del paragolpes Glass_parking_light/
-// Glass_orange/Glass_red (tambien BLEND+transmission=1 -> flotaban). (2026-06-16)
-// v17 = OPAQUE causaba z-fighting con la chapa ("peleando"); revertido a BLEND y
-// ADEMAS transmission=0 en los 4 vidrios -> vidrio simple, no flota ni pelea. (2026-06-16)
-const MODEL_URL = '/models/SingerClean-v17.glb'
+// v15/v16/v17 (vidrios) = intentos de material (OPAQUE / transmission=0) para el
+// "vidrio volando" del frente. SIN EFECTO (el user confirmo "exactamente igual";
+// pagina servia v17, sin cache) -> el bug del frente es GEOMETRICO, no de material.
+// v14 (conform de molduras traseras) deformo/alargo la goma -> el user lo rechazo.
+// REVERTIDO a v13 (2026-06-16): molduras como en v6 (sin conformar) + vidrios
+// originales. El "vidrio volando" del frente queda para arreglar por geometria.
+const MODEL_URL = '/models/SingerClean-v13.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
