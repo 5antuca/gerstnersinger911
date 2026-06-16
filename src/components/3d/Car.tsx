@@ -24,7 +24,9 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 
 // v11 = v10 sin las franjas de paragolpes (Bumper_stripe_F/R ocultas a pedido
 // en v5/v6/web, 2026-06-12; el material Bumper_stripe_mat se purgó con ellas)
-const MODEL_URL = '/models/SingerClean-v11.glb'
+// v12 = v11 + molduras de paragolpes (Front_molding + Rear_molding_L/R, cromo+goma)
+// inyectadas con gltf-transform desde v6_gs (2026-06-15)
+const MODEL_URL = '/models/SingerClean-v12.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
