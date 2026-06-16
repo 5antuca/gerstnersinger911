@@ -26,7 +26,9 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 // en v5/v6/web, 2026-06-12; el material Bumper_stripe_mat se purgó con ellas)
 // v12 = v11 + molduras de paragolpes (Front_molding + Rear_molding_L/R, cromo+goma)
 // inyectadas con gltf-transform desde v6_gs (2026-06-15)
-const MODEL_URL = '/models/SingerClean-v12.glb'
+// v13 = v12 con el rubber de las molduras oscuro (color goma de llanta, material
+// Rubber_tire separado) (2026-06-15)
+const MODEL_URL = '/models/SingerClean-v13.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
