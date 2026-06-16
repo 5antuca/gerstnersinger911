@@ -36,10 +36,13 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 // v14 (conform de molduras traseras) deformo/alargo la goma -> el user lo rechazo.
 // REVERTIDO a v13 (2026-06-16): molduras como en v6 (sin conformar) + vidrios
 // originales. El "vidrio volando" del frente queda para arreglar por geometria.
-// v18 = v13 con el cover transparente de la luz del paragolpes (Glass_parking_light
-// FRENTE) corrido -4.5cm en Z (sobresalia ~5cm de su carcasa = "flotaba"). Geometria
-// pura; faro redondo y trasero intactos. (2026-06-16)
-const MODEL_URL = '/models/SingerClean-v18.glb'
+// v18 = intento de correr el cover -4.5cm (quedo "muy adentro"); descartado.
+// v19 = v13 con el LENTE de luz de paragolpes del FRENTE reemplazado por el de v6.
+// En v6 es un lente SOLIDO (ambar+transparente en una pieza); en el web (v11) estaba
+// PARTIDO (cover transparente separado + ambar hundido) -> el cover "flotaba". Se
+// sacaron Plane.079/119/130/131/132 y se inyecto el lente v6 Plane.075/114/123/124/125.
+// (2026-06-16)
+const MODEL_URL = '/models/SingerClean-v19.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
