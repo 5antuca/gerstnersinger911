@@ -42,12 +42,12 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 // PARTIDO (cover transparente separado + ambar hundido) -> el cover "flotaba". Se
 // sacaron Plane.079/119/130/131/132 y se inyecto el lente v6 Plane.075/114/123/124/125.
 // (2026-06-16)
-// v20/v21 = mover el lente v6 adelante (no encajaba en la apertura del web -> lineas
-// azules + hundimiento). Descartado.
-// v22 = vuelve al LENTE ORIGINAL del web (encaja en su apertura) y arregla el flotado
-// moviendo SOLO el ambar (Glass_orange) +4cm adelante, para pegarse detras del cover
-// transparente (que queda en su sitio z~1.93). Sin flotar, sin lineas azules. (2026-06-16)
-const MODEL_URL = '/models/SingerClean-v22.glb'
+// v20/v21/v22 = intentos de mover el lente/ambar -> EMPEORARON (separaron blanco+naranja,
+// lineas azules). Descartados. REVERTIDO a v19 (lente solido de v6: blanco+naranja JUNTOS
+// + flotado resuelto = "vidrio perfecto" del user). Pendiente: linea azul fina a la
+// derecha de las luces de abajo (el lente de v6 no calza exacto en la apertura del body
+// del web v11). La optica redonda esta perfecta. (2026-06-16)
+const MODEL_URL = '/models/SingerClean-v19.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
