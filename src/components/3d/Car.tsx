@@ -28,7 +28,9 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 // inyectadas con gltf-transform desde v6_gs (2026-06-15)
 // v13 = v12 con el rubber de las molduras oscuro (color goma de llanta, material
 // Rubber_tire separado) (2026-06-15)
-const MODEL_URL = '/models/SingerClean-v13.glb'
+// v14 = v13 con las molduras traseras re-conformadas al cuerpo real del GLB web
+// (apoyan flush, ya no flotan) (2026-06-16)
+const MODEL_URL = '/models/SingerClean-v14.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
