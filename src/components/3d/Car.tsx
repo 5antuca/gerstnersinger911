@@ -34,7 +34,9 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 // en THREE.js doble-renderiza el vidrio -> "vidrio fantasma volando"). (2026-06-16)
 // v16 = v15 + mismo fix (OPAQUE) a los vidrios del paragolpes Glass_parking_light/
 // Glass_orange/Glass_red (tambien BLEND+transmission=1 -> flotaban). (2026-06-16)
-const MODEL_URL = '/models/SingerClean-v16.glb'
+// v17 = OPAQUE causaba z-fighting con la chapa ("peleando"); revertido a BLEND y
+// ADEMAS transmission=0 en los 4 vidrios -> vidrio simple, no flota ni pelea. (2026-06-16)
+const MODEL_URL = '/models/SingerClean-v17.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
