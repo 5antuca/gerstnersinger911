@@ -30,7 +30,9 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 // Rubber_tire separado) (2026-06-15)
 // v14 = v13 con las molduras traseras re-conformadas al cuerpo real del GLB web
 // (apoyan flush, ya no flotan) (2026-06-16)
-const MODEL_URL = '/models/SingerClean-v14.glb'
+// v15 = v14 con Headlamp_glass en alphaMode OPAQUE (era BLEND+transmission=1, que
+// en THREE.js doble-renderiza el vidrio -> "vidrio fantasma volando"). (2026-06-16)
+const MODEL_URL = '/models/SingerClean-v15.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
