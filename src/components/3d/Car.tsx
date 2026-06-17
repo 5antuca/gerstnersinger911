@@ -54,7 +54,9 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 //    intacto). El molding se diseno sobre el cuerpo v6; el cuerpo del GLB web es distinto ->
 //    flotaban. Conform/rotacion deformaban el cromo (rechazado); rigido 11mm = lo mas pegado
 //    sin deformar (pipeline/fix_moldings.mjs INSET_L=INSET_R=0.011).
-const MODEL_URL = '/models/SingerClean-v24.glb'
+// v25 (2026-06-16) = v24 + punta del molding DERECHO retraida 1.5cm (su punta se pasaba del
+//    paragolpes en la esquina del web; SHORTEN_R=0.015, escala 1D rigida anclada en el centro).
+const MODEL_URL = '/models/SingerClean-v25.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
