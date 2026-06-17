@@ -12,6 +12,8 @@ export const PRESET_COLORS = [
 // Colores predeterminados del CROMADO de la llanta (radios + labio + bulones
 // + valvula = Fuchs_spoke/Bolt_wheel/Valve_metal). Acabado satinado fijo.
 export const PRESET_RIMS = [
+  // Gris Franco Bitt = default del configurador (un tono mas oscuro que el satin silver).
+  { id: 'gris-franco', hex: '#989898', name: 'Gris' },
   { id: 'silver', hex: '#e7e7e7', name: 'Satin Silver' },
   { id: 'black', hex: '#1b1b1b', name: 'Satin Black' },
   { id: 'gold', hex: '#c9a84a', name: 'Aurum Gold' },
