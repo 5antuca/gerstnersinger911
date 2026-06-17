@@ -54,9 +54,11 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 //    intacto). El molding se diseno sobre el cuerpo v6; el cuerpo del GLB web es distinto ->
 //    flotaban. Conform/rotacion deformaban el cromo (rechazado); rigido 11mm = lo mas pegado
 //    sin deformar (pipeline/fix_moldings.mjs INSET_L=INSET_R=0.011).
-// v25 (2026-06-16) = v24 + punta del molding DERECHO retraida 1.5cm (su punta se pasaba del
-//    paragolpes en la esquina del web; SHORTEN_R=0.015, escala 1D rigida anclada en el centro).
-const MODEL_URL = '/models/SingerClean-v25.glb'
+// v25/v26 (2026-06-16) = correccion del cap que asomaba en la punta INBOARD de un molding
+//    (pegado al overrider central). v25 acorto el lado equivocado; v26 = revertido ese y
+//    acortado el correcto (Rear_molding_L) 2cm en su punta de adentro (SHORTEN_L=0.02, escala
+//    1D rigida anclada en el extremo de afuera; el otro queda a largo completo). cromo intacto.
+const MODEL_URL = '/models/SingerClean-v26.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
