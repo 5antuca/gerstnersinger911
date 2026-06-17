@@ -50,7 +50,11 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 //  - El "vidrio volando" no era geometria (v6 tiene la MISMA geo): era transmission=1 + BLEND
 //    = doble render en three.js. -> las 4 luces (Headlamp/parking/orange/red) a alphaMode
 //    OPAQUE conservando transmission (three.js las renderiza 1 sola vez, sin fantasma).
-const MODEL_URL = '/models/SingerClean-v23.glb'
+// v24 (2026-06-16) = v23 + molduras traseras 11mm hacia adentro (translacion RIGIDA, cromo
+//    intacto). El molding se diseno sobre el cuerpo v6; el cuerpo del GLB web es distinto ->
+//    flotaban. Conform/rotacion deformaban el cromo (rechazado); rigido 11mm = lo mas pegado
+//    sin deformar (pipeline/fix_moldings.mjs INSET_L=INSET_R=0.011).
+const MODEL_URL = '/models/SingerClean-v24.glb'
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
