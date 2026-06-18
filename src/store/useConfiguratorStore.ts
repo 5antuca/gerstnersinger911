@@ -72,18 +72,14 @@ export const PRESET_ENVIRONMENTS = [
 // Vehículos del configurador. El primero es el default. Cada uno tiene su GLB.
 export const VEHICLES = [
   { id: 'porsche', name: 'Porsche Gerstner', glb: '/models/SingerClean-v2.glb' },
-  { id: 'jaguar', name: 'Jaguar E-Type', glb: '/models/jaguar-e-type.glb' },
+  { id: 'jaguar', name: 'Jaguar E-Type', glb: '/models/jaguar.glb' },
 ] as const
 export type VehicleId = typeof VEHICLES[number]['id']
 
-// Variantes del Jaguar = modelos del blend (GLBs distintos, look fijo). Gris =
-// liso; Blanco = con franjas azules (las franjas están horneadas en la carrocería,
-// por eso es un GLB aparte y no un recolor).
-export const JAGUAR_VARIANTS = [
-  { id: 'gris', name: 'Gris', glb: '/models/jaguar-gris.glb' },
-  { id: 'blanco', name: 'Blanco (franjas)', glb: '/models/jaguar-blanco.glb' },
-] as const
-export type JaguarVariant = typeof JAGUAR_VARIANTS[number]['id']
+// El Jaguar es UN GLB configurable (jaguar.glb). Sus materiales recoloreables:
+// Jaguar_Body (principal) + Jaguar_Stripe (franjas/secundario) + Jag1:chrome_rim
+// (llantas) + COP:leather1 (interior). La web reusa los campos del Porsche
+// (paintColor→body, decalColor→franjas, rimColor→llantas, interiorTint→interior).
 
 export type EnvironmentPreset = typeof PRESET_ENVIRONMENTS[number]['id']
 
@@ -116,8 +112,6 @@ interface ConfiguratorState {
   toggleAutoRotate: () => void;
   vehicle: VehicleId;
   setVehicle: (v: VehicleId) => void;
-  jaguarVariant: JaguarVariant;
-  setJaguarVariant: (v: JaguarVariant) => void;
 }
 
 export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
@@ -152,6 +146,4 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   toggleAutoRotate: () => set((s) => ({ autoRotate: !s.autoRotate })),
   vehicle: 'porsche',
   setVehicle: (vehicle) => set({ vehicle }),
-  jaguarVariant: 'gris',
-  setJaguarVariant: (jaguarVariant) => set({ jaguarVariant }),
 }))

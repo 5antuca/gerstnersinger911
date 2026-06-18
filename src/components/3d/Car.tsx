@@ -20,7 +20,7 @@ import * as THREE from 'three'
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import { useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
-import { useConfiguratorStore, VEHICLES, JAGUAR_VARIANTS } from '@/store/useConfiguratorStore'
+import { useConfiguratorStore, VEHICLES } from '@/store/useConfiguratorStore'
 
 // v11 = v10 sin las franjas de paragolpes (Bumper_stripe_F/R ocultas a pedido
 // en v5/v6/web, 2026-06-12; el material Bumper_stripe_mat se purgó con ellas)
@@ -93,11 +93,7 @@ export function Model(props: any) {
   // GLB según el vehículo seleccionado (Porsche / Jaguar). useLoader resuspende
   // al cambiar la URL y carga el otro modelo.
   const vehicle = useConfiguratorStore((s) => s.vehicle)
-  const jaguarVariant = useConfiguratorStore((s) => s.jaguarVariant)
-  // Jaguar: el GLB depende de la variante (gris / blanco-franjas, modelos distintos).
-  const modelUrl = vehicle === 'jaguar'
-    ? (JAGUAR_VARIANTS.find((v) => v.id === jaguarVariant)?.glb ?? JAGUAR_VARIANTS[0].glb)
-    : (VEHICLES.find((v) => v.id === vehicle)?.glb ?? MODEL_URL)
+  const modelUrl = VEHICLES.find((v) => v.id === vehicle)?.glb ?? MODEL_URL
   const gltf = useLoader(GLTFLoader, modelUrl, (loader) => {
     const dracoLoader = new DRACOLoader()
     dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.5/')
@@ -298,6 +294,20 @@ export function Model(props: any) {
         m.metalness = interiorFinish * 0.9
         m.roughness = or * (1 - interiorFinish) + 0.3 * interiorFinish
         m.needsUpdate = true
+      }
+      // JAGUAR configurable (no-op en el Porsche: los materiales no existen):
+      // body←paintColor, franjas←decalColor, llantas←rimColor, interior←interiorTint (SET).
+      {
+        const jn = m.name.toLowerCase()
+        if (jn === 'jaguar_body') {
+          m.color.set(paintColor); m.metalness = paintFinish; m.roughness = 0.55 - 0.32 * paintFinish; m.needsUpdate = true
+        } else if (jn === 'jaguar_stripe') {
+          m.color.set(decalColor); m.metalness = decalFinish; m.roughness = 0.55 - 0.32 * decalFinish; m.needsUpdate = true
+        } else if (jn.startsWith('jag1:chrome_rim')) {
+          m.color.set(rimColor); m.metalness = Math.max(rimFinish, 0.6); m.roughness = 0.5 - 0.35 * rimFinish; m.needsUpdate = true
+        } else if (jn.startsWith('cop:leather1')) {
+          m.color.set(interiorTint); m.needsUpdate = true
+        }
       }
     })
 
