@@ -58,7 +58,7 @@ import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 //    (pegado al overrider central). v25 acorto el lado equivocado; v26 = revertido ese y
 //    acortado el correcto (Rear_molding_L) 2cm en su punta de adentro (SHORTEN_L=0.02, escala
 //    1D rigida anclada en el extremo de afuera; el otro queda a largo completo). cromo intacto.
-const MODEL_URL = '/models/SingerClean-v1.glb'   // Porsche Gerstner v1.0 (= ex-v28: molduras + linea azul + vidrios + rim Franco Bitt). Canonico.
+const MODEL_URL = '/models/SingerClean-v2.glb'   // Porsche Gerstner v2.0 (= v1 + interior trasero: weave + respaldos + bolsters + ojales; cuero cognac unificado liso=trenzado; barra dash continua). Canonico.
 const SCALE = 1.0
 
 const PAINT_MAT = 'Paint_ext'
