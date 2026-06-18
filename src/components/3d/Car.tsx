@@ -20,7 +20,7 @@ import * as THREE from 'three'
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import { useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
-import { useConfiguratorStore } from '@/store/useConfiguratorStore'
+import { useConfiguratorStore, VEHICLES } from '@/store/useConfiguratorStore'
 
 // v11 = v10 sin las franjas de paragolpes (Bumper_stripe_F/R ocultas a pedido
 // en v5/v6/web, 2026-06-12; el material Bumper_stripe_mat se purgó con ellas)
@@ -90,7 +90,11 @@ function esInteriorTintable(nombre: string): boolean {
 
 export function Model(props: any) {
   const gl = useThree((state) => state.gl)
-  const gltf = useLoader(GLTFLoader, MODEL_URL, (loader) => {
+  // GLB según el vehículo seleccionado (Porsche / Jaguar). useLoader resuspende
+  // al cambiar la URL y carga el otro modelo.
+  const vehicle = useConfiguratorStore((s) => s.vehicle)
+  const modelUrl = VEHICLES.find((v) => v.id === vehicle)?.glb ?? MODEL_URL
+  const gltf = useLoader(GLTFLoader, modelUrl, (loader) => {
     const dracoLoader = new DRACOLoader()
     dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.5/')
     loader.setDRACOLoader(dracoLoader)
@@ -113,6 +117,8 @@ export function Model(props: any) {
   const interiorFinish = useConfiguratorStore((s) => s.interiorFinish)
   const rimFinish = useConfiguratorStore((s) => s.rimFinish)
   const valleyFinish = useConfiguratorStore((s) => s.valleyFinish)
+  const jaguarColor = useConfiguratorStore((s) => s.jaguarColor)
+  const jaguarFinish = useConfiguratorStore((s) => s.jaguarFinish)
 
   // Pintura dinámica: physical con clearcoat (mismo look que la laca del .blend).
   const paintMaterial = useMemo(() => {
@@ -291,6 +297,15 @@ export function Model(props: any) {
         m.roughness = or * (1 - interiorFinish) + 0.3 * interiorFinish
         m.needsUpdate = true
       }
+      // Carrocería del Jaguar (Jag1:body1): color dinámico = configs blanco/gris
+      // + picker. finish 0→1 = mate→metalizado glossy. (No-op en el Porsche: el
+      // material no existe en su GLB.)
+      if (m.name === 'Jag1:body1') {
+        m.color.set(jaguarColor)
+        m.metalness = jaguarFinish
+        m.roughness = 0.5 - 0.28 * jaguarFinish
+        m.needsUpdate = true
+      }
     })
 
     // Letras "PORSCHE" traseras (objetos PORSCHE_L1..L7): siguen el color de
@@ -316,7 +331,7 @@ export function Model(props: any) {
       }
       for (const m of o.userData.__letterMats as THREE.MeshStandardMaterial[]) aplicar(m)
     })
-  }, [paintColor, paintFinish, rimColor, rimFinish, valleyColor, valleyFinish, decalColor, decalFinish, interiorTint, interiorFinish, applyToMaterials, paintMaterial, scene])
+  }, [paintColor, paintFinish, rimColor, rimFinish, valleyColor, valleyFinish, decalColor, decalFinish, interiorTint, interiorFinish, jaguarColor, jaguarFinish, applyToMaterials, paintMaterial, scene])
 
   return (
     <group {...props} dispose={null}>

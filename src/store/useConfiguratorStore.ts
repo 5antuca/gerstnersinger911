@@ -69,6 +69,20 @@ export const PRESET_ENVIRONMENTS = [
   { id: 'apartment', name: 'Apartment', swatch: '#c4a98a' },
 ] as const
 
+// Vehículos del configurador. El primero es el default. Cada uno tiene su GLB.
+export const VEHICLES = [
+  { id: 'porsche', name: 'Porsche Gerstner', glb: '/models/SingerClean-v2.glb' },
+  { id: 'jaguar', name: 'Jaguar E-Type', glb: '/models/jaguar-e-type.glb' },
+] as const
+export type VehicleId = typeof VEHICLES[number]['id']
+
+// Colores de carrocería del Jaguar (configs blanco/gris). El gris es el tono
+// horneado de Jag1:body1 ([0.337,0.37,0.345] lineal ≈ sRGB #9da49f).
+export const JAGUAR_COLORS = [
+  { id: 'gris', hex: '#9da49f', name: 'Gris' },
+  { id: 'blanco', hex: '#e9e9e7', name: 'Blanco' },
+]
+
 export type EnvironmentPreset = typeof PRESET_ENVIRONMENTS[number]['id']
 
 interface ConfiguratorState {
@@ -98,6 +112,12 @@ interface ConfiguratorState {
   setEnvironment: (environment: EnvironmentPreset) => void;
   autoRotate: boolean;
   toggleAutoRotate: () => void;
+  vehicle: VehicleId;
+  setVehicle: (v: VehicleId) => void;
+  jaguarColor: string;
+  setJaguarColor: (c: string) => void;
+  jaguarFinish: number;
+  setJaguarFinish: (v: number) => void;
 }
 
 export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
@@ -130,4 +150,10 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   setEnvironment: (environment) => set({ environment }),
   autoRotate: true,
   toggleAutoRotate: () => set((s) => ({ autoRotate: !s.autoRotate })),
+  vehicle: 'porsche',
+  setVehicle: (vehicle) => set({ vehicle }),
+  jaguarColor: JAGUAR_COLORS[0].hex,
+  setJaguarColor: (jaguarColor) => set({ jaguarColor }),
+  jaguarFinish: 0.7,
+  setJaguarFinish: (jaguarFinish) => set({ jaguarFinish }),
 }))
