@@ -235,6 +235,10 @@ export default function Home() {
         : 'ring-1 ring-white/10 hover:ring-white/40'
     }`
 
+  // En Cargar mostrar SOLO los perfiles del vehículo activo (los del Porsche no
+  // tienen campo vehicle → cuentan como 'porsche'; los del Jaguar lo traen).
+  const perfilesVehiculo = perfiles.filter((p) => (p.cfg.vehicle ?? 'porsche') === vehicle)
+
   return (
     <main
       className="w-screen h-screen text-white overflow-hidden font-sans selection:bg-white/20 relative"
@@ -484,10 +488,10 @@ export default function Home() {
 
           {activeTab === 'cargar' && (
             <div className="flex items-center justify-center gap-2 px-2 pt-3 pb-1 flex-wrap max-w-[600px]">
-              {perfiles.length === 0 && (
+              {perfilesVehiculo.length === 0 && (
                 <span className="text-white/40 text-xs py-1">No hay perfiles guardados — usá el botón 💾 para crear uno.</span>
               )}
-              {perfiles.map((p) => (
+              {perfilesVehiculo.map((p) => (
                 <span key={p.name} className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full pl-1.5 pr-2 py-1">
                   <span className="w-4 h-4 rounded-full border border-black/30" style={{ backgroundColor: p.cfg.paintColor }} />
                   <span className="w-4 h-4 rounded-full border border-black/30 -ml-2" style={{ backgroundColor: p.cfg.decalColor }} />
@@ -498,7 +502,7 @@ export default function Home() {
                     className="text-white/30 hover:text-white text-xs px-0.5">×</button>
                 </span>
               ))}
-              {perfiles.length > 0 && (
+              {perfilesVehiculo.length > 0 && (
                 <span
                   className={`text-[9px] pl-1 whitespace-nowrap ${syncEstado === 'cloud' ? 'text-white/25' : 'text-amber-200/60'}`}
                   title={syncEstado === 'cloud' ? 'Perfiles sincronizados en la nube: disponibles desde cualquier dispositivo' : 'Guardados solo en este navegador (nube no disponible)'}
