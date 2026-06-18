@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useProgress } from '@react-three/drei'
 import { Scene } from '@/components/3d/Scene'
-import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS, PRESET_DECALS, PRESET_VALLEYS, VEHICLES, JAGUAR_COLORS, type VehicleId } from '@/store/useConfiguratorStore'
+import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS, PRESET_DECALS, PRESET_VALLEYS, VEHICLES, JAGUAR_VARIANTS, type VehicleId, type JaguarVariant } from '@/store/useConfiguratorStore'
 import Image from 'next/image'
 import Wheel from '@uiw/react-color-wheel'
 import ShadeSlider from '@uiw/react-color-shade-slider'
@@ -114,7 +114,7 @@ function useMediaQuery(query: string) {
 }
 
 export default function Home() {
-  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorFinish, setInteriorFinish, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle, jaguarColor, setJaguarColor, jaguarFinish, setJaguarFinish } = useConfiguratorStore()
+  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorFinish, setInteriorFinish, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle, jaguarVariant, setJaguarVariant } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
   const [activeTab, setActiveTab] = useState<null | 'vehiculos' | 'pintura' | 'interior' | 'llantas' | 'luz' | 'cargar' | 'guardar'>(null)
@@ -125,7 +125,7 @@ export default function Home() {
   // robusta es /api/perfiles (nube compartida entre dispositivos). Al montar
   // se mergean por nombre (gana el updatedAt más nuevo y los tombstones de la
   // nube tapan lo borrado) y se sube lo que la nube no tenga.
-  type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorFinish?: number; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string; vehicle?: string; jaguarColor?: string; jaguarFinish?: number }; updatedAt?: number }
+  type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorFinish?: number; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string; vehicle?: string; jaguarVariant?: string }; updatedAt?: number }
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [nombrePerfil, setNombrePerfil] = useState('')
   // 'cloud' = sincronizado con la nube; 'local' = solo este navegador.
@@ -169,7 +169,7 @@ export default function Home() {
   const guardarPerfil = () => {
     const name = nombrePerfil.trim()
     if (!name) return
-    const cfg = { paintColor, paintFinish, decalColor, decalFinish, interiorTint, interiorFinish, rimColor, rimFinish, valleyColor, valleyFinish, environment, vehicle, jaguarColor, jaguarFinish }
+    const cfg = { paintColor, paintFinish, decalColor, decalFinish, interiorTint, interiorFinish, rimColor, rimFinish, valleyColor, valleyFinish, environment, vehicle, jaguarVariant }
     const perfil: Perfil = { name, cfg, updatedAt: Date.now() }
     const nuevos = [...perfiles.filter((p) => p.name !== name), perfil]
     setPerfiles(nuevos)
@@ -182,8 +182,7 @@ export default function Home() {
   }
   const cargarPerfil = (p: Perfil) => {
     setVehicle((p.cfg.vehicle as VehicleId) ?? 'porsche')
-    if (p.cfg.jaguarColor) setJaguarColor(p.cfg.jaguarColor)
-    if (p.cfg.jaguarFinish !== undefined) setJaguarFinish(p.cfg.jaguarFinish)
+    if (p.cfg.jaguarVariant) setJaguarVariant(p.cfg.jaguarVariant as JaguarVariant)
     setPaintColor(p.cfg.paintColor); setPaintFinish(p.cfg.paintFinish ?? 0.85)
     setDecalColor(p.cfg.decalColor); setDecalFinish(p.cfg.decalFinish ?? 0)
     setInteriorTint(p.cfg.interiorTint); setInteriorFinish(p.cfg.interiorFinish ?? 0)
@@ -213,7 +212,7 @@ export default function Home() {
       const franco = perfiles.find((p) => p.name === 'Franco Bitt')
       if (franco) cargarPerfil(franco)
     } else {
-      setJaguarColor(JAGUAR_COLORS[0].hex); setJaguarFinish(0.7)
+      setJaguarVariant('gris')
     }
   }
 
@@ -330,7 +329,7 @@ export default function Home() {
           <div className="w-max mx-auto flex gap-1">
             {(vehicle === 'porsche'
               ? ([['vehiculos', 'Vehículos'], ['pintura', 'Pintura'], ['interior', 'Interior'], ['llantas', 'Llantas'], ['luz', 'Luz'], ['cargar', 'Cargar']] as const)
-              : ([['vehiculos', 'Vehículos'], ['pintura', 'Pintura'], ['luz', 'Luz'], ['cargar', 'Cargar']] as const)
+              : ([['vehiculos', 'Vehículos'], ['pintura', 'Versión'], ['luz', 'Luz'], ['cargar', 'Cargar']] as const)
             ).map(([id, label]) => (
               <button
                 key={id}
@@ -394,16 +393,14 @@ export default function Home() {
           {activeTab === 'pintura' && vehicle === 'jaguar' && (
             <div className={panelRow}>
               <div className="flex items-center gap-3">
-                <span className={popTitle + ' !mb-0 shrink-0'}>Carrocería</span>
-                <ColorPickerRGB hex={jaguarColor} finish={jaguarFinish} onHex={setJaguarColor} onFinish={setJaguarFinish} size={wheelSize} />
-                <div className="grid grid-cols-1 gap-1.5">
-                  {JAGUAR_COLORS.map((c) => (
-                    <button key={c.id} onClick={() => setJaguarColor(c.hex)}
-                      className={`${compact ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'} rounded-full font-medium flex items-center gap-2 transition-all duration-300 whitespace-nowrap ${
-                        jaguarColor === c.hex ? 'bg-white text-black' : 'text-white/70 hover:text-white hover:bg-white/10'
+                <span className={popTitle + ' !mb-0 shrink-0'}>Versión</span>
+                <div className="flex gap-2">
+                  {JAGUAR_VARIANTS.map((v) => (
+                    <button key={v.id} onClick={() => setJaguarVariant(v.id)}
+                      className={`${compact ? 'px-3 py-1 text-[11px]' : 'px-4 py-1.5 text-xs'} rounded-full font-medium tracking-wide transition-all duration-300 whitespace-nowrap ${
+                        jaguarVariant === v.id ? 'bg-white text-black' : 'text-white/70 hover:text-white hover:bg-white/10'
                       }`}>
-                      <span className="w-3 h-3 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: c.hex }} />
-                      {c.name}
+                      {v.name}
                     </button>
                   ))}
                 </div>
