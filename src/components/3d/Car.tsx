@@ -295,9 +295,10 @@ export function Model(props: any) {
         m.roughness = or * (1 - interiorFinish) + 0.3 * interiorFinish
         m.needsUpdate = true
       }
-      // JAGUAR configurable (no-op en el Porsche: los materiales no existen):
-      // body←paintColor, franjas←decalColor, llantas←rimColor, interior←interiorTint (SET).
-      {
+      // JAGUAR configurable (solo 'jaguar'). 'titi' (Jaguar #3 negro) es FIJO:
+      // materiales horneados (negro + interior rojo + perno cromo) — no se recolorean,
+      // aunque cop:leather1.002 / jag1:chrome_rim1.001 compartan nombre con el #2.
+      if (vehicle === 'jaguar') {
         const jn = m.name.toLowerCase()
         if (jn === 'jaguar_body') {
           m.color.set(paintColor); m.metalness = paintFinish; m.roughness = 0.55 - 0.32 * paintFinish; m.needsUpdate = true
@@ -334,7 +335,7 @@ export function Model(props: any) {
       }
       for (const m of o.userData.__letterMats as THREE.MeshStandardMaterial[]) aplicar(m)
     })
-  }, [paintColor, paintFinish, rimColor, rimFinish, valleyColor, valleyFinish, decalColor, decalFinish, interiorTint, interiorFinish, applyToMaterials, paintMaterial, scene])
+  }, [paintColor, paintFinish, rimColor, rimFinish, valleyColor, valleyFinish, decalColor, decalFinish, interiorTint, interiorFinish, applyToMaterials, paintMaterial, scene, vehicle])
 
   return (
     <group {...props} dispose={null}>

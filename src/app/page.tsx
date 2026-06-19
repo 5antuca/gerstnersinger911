@@ -207,16 +207,18 @@ export default function Home() {
   // arranca en gris (su config default).
   const seleccionarVehiculo = (id: VehicleId) => {
     setVehicle(id)
+    setActiveTab(null) // el nuevo vehículo puede no tener el tab abierto (ej. Titi sin Pintura)
     if (id === 'porsche') {
       const franco = perfiles.find((p) => p.name === 'Franco Bitt')
       if (franco) cargarPerfil(franco)
-    } else {
+    } else if (id === 'jaguar') {
       // Jaguar default = blanco con franjas azules + llantas cromo + interior rojo
       setPaintColor('#e9e9e7'); setPaintFinish(0.7)
       setDecalColor('#273f99'); setDecalFinish(0.5)
       setRimColor('#dadada'); setRimFinish(1)
       setInteriorTint('#980a00'); setInteriorFinish(0)
     }
+    // 'titi' = Jaguar #3 negro FIJO (materiales horneados) — sin defaults de color
   }
 
   // Estilos compartidos del bottom bar. Cada tab revela su panel SOLO al pasar el
@@ -330,7 +332,10 @@ export default function Home() {
         <div className={`pointer-events-auto bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 rounded-3xl ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} shadow-2xl max-w-[88vw] overflow-x-auto`}>
           {/* fila de tabs */}
           <div className="w-max mx-auto flex gap-1">
-            {([['vehiculos', 'Vehículos'], ['pintura', 'Pintura'], ['interior', 'Interior'], ['llantas', 'Llantas'], ['luz', 'Luz'], ['cargar', 'Cargar']] as const).map(([id, label]) => (
+            {([['vehiculos', 'Vehículos'], ['pintura', 'Pintura'], ['interior', 'Interior'], ['llantas', 'Llantas'], ['luz', 'Luz'], ['cargar', 'Cargar']] as const)
+              // Titi es fijo (no configurable) → ocultar Pintura/Interior/Llantas
+              .filter(([id]) => vehicle !== 'titi' || (id !== 'pintura' && id !== 'interior' && id !== 'llantas'))
+              .map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => setActiveTab(activeTab === id ? null : id)}

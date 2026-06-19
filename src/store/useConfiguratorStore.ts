@@ -73,6 +73,9 @@ export const PRESET_ENVIRONMENTS = [
 export const VEHICLES = [
   { id: 'porsche', name: 'Porsche Gerstner', glb: '/models/SingerClean-v2.glb' },
   { id: 'jaguar', name: 'Jaguar E-Type', glb: '/models/jaguar.glb' },
+  // Titi = Jaguar E-Type #3 negro (faros blancos + piezas traseras escondidas).
+  // FIJO, no configurable: materiales horneados en el GLB (Car.tsx no lo recolorea).
+  { id: 'titi', name: 'Titi', glb: '/models/jaguar-titi.glb' },
 ] as const
 export type VehicleId = typeof VEHICLES[number]['id']
 
