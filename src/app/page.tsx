@@ -114,7 +114,7 @@ function useMediaQuery(query: string) {
 }
 
 export default function Home() {
-  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorFinish, setInteriorFinish, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle } = useConfiguratorStore()
+  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorFinish, setInteriorFinish, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle, jaguarVariant, setJaguarVariant } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
   const [activeTab, setActiveTab] = useState<null | 'vehiculos' | 'pintura' | 'interior' | 'llantas' | 'luz' | 'cargar' | 'guardar'>(null)
@@ -125,7 +125,7 @@ export default function Home() {
   // robusta es /api/perfiles (nube compartida entre dispositivos). Al montar
   // se mergean por nombre (gana el updatedAt más nuevo y los tombstones de la
   // nube tapan lo borrado) y se sube lo que la nube no tenga.
-  type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorFinish?: number; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string; vehicle?: string }; updatedAt?: number }
+  type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorFinish?: number; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string; vehicle?: string; jaguarVariant?: string }; updatedAt?: number }
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [nombrePerfil, setNombrePerfil] = useState('')
   // 'cloud' = sincronizado con la nube; 'local' = solo este navegador.
@@ -169,7 +169,7 @@ export default function Home() {
   const guardarPerfil = () => {
     const name = nombrePerfil.trim()
     if (!name) return
-    const cfg = { paintColor, paintFinish, decalColor, decalFinish, interiorTint, interiorFinish, rimColor, rimFinish, valleyColor, valleyFinish, environment, vehicle }
+    const cfg = { paintColor, paintFinish, decalColor, decalFinish, interiorTint, interiorFinish, rimColor, rimFinish, valleyColor, valleyFinish, environment, vehicle, jaguarVariant }
     const perfil: Perfil = { name, cfg, updatedAt: Date.now() }
     const nuevos = [...perfiles.filter((p) => p.name !== name), perfil]
     setPerfiles(nuevos)
@@ -182,6 +182,7 @@ export default function Home() {
   }
   const cargarPerfil = (p: Perfil) => {
     setVehicle((p.cfg.vehicle as VehicleId) ?? 'porsche')
+    setJaguarVariant((p.cfg.jaguarVariant as 'config' | 'titi') ?? 'config')
     setPaintColor(p.cfg.paintColor); setPaintFinish(p.cfg.paintFinish ?? 0.85)
     setDecalColor(p.cfg.decalColor); setDecalFinish(p.cfg.decalFinish ?? 0)
     setInteriorTint(p.cfg.interiorTint); setInteriorFinish(p.cfg.interiorFinish ?? 0)
@@ -207,18 +208,19 @@ export default function Home() {
   // arranca en gris (su config default).
   const seleccionarVehiculo = (id: VehicleId) => {
     setVehicle(id)
-    setActiveTab(null) // el nuevo vehículo puede no tener el tab abierto (ej. Titi sin Pintura)
+    setActiveTab(null)
     if (id === 'porsche') {
       const franco = perfiles.find((p) => p.name === 'Franco Bitt')
       if (franco) cargarPerfil(franco)
     } else if (id === 'jaguar') {
+      // Al elegir el Jaguar arranca en el CONFIGURABLE; el preset "Titi" lo pasa a la variante negra.
+      setJaguarVariant('config')
       // Jaguar default = blanco con franjas azules + llantas cromo + interior rojo
       setPaintColor('#e9e9e7'); setPaintFinish(0.7)
       setDecalColor('#273f99'); setDecalFinish(0.5)
       setRimColor('#dadada'); setRimFinish(1)
       setInteriorTint('#980a00'); setInteriorFinish(0)
     }
-    // 'titi' = Jaguar #3 negro FIJO (materiales horneados) — sin defaults de color
   }
 
   // Estilos compartidos del bottom bar. Cada tab revela su panel SOLO al pasar el
@@ -333,8 +335,8 @@ export default function Home() {
           {/* fila de tabs */}
           <div className="w-max mx-auto flex gap-1">
             {([['vehiculos', 'Vehículos'], ['pintura', 'Pintura'], ['interior', 'Interior'], ['llantas', 'Llantas'], ['luz', 'Luz'], ['cargar', 'Cargar']] as const)
-              // Titi es fijo (no configurable) → ocultar Pintura/Interior/Llantas
-              .filter(([id]) => vehicle !== 'titi' || (id !== 'pintura' && id !== 'interior' && id !== 'llantas'))
+              // Variante Titi (Jaguar negro fijo) → ocultar Pintura/Interior/Llantas
+              .filter(([id]) => !(vehicle === 'jaguar' && jaguarVariant === 'titi') || (id !== 'pintura' && id !== 'interior' && id !== 'llantas'))
               .map(([id, label]) => (
               <button
                 key={id}

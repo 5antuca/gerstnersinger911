@@ -20,7 +20,7 @@ import * as THREE from 'three'
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import { useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
-import { useConfiguratorStore, VEHICLES } from '@/store/useConfiguratorStore'
+import { useConfiguratorStore, VEHICLES, JAGUAR_TITI_GLB } from '@/store/useConfiguratorStore'
 
 // v11 = v10 sin las franjas de paragolpes (Bumper_stripe_F/R ocultas a pedido
 // en v5/v6/web, 2026-06-12; el material Bumper_stripe_mat se purgó con ellas)
@@ -93,7 +93,10 @@ export function Model(props: any) {
   // GLB según el vehículo seleccionado (Porsche / Jaguar). useLoader resuspende
   // al cambiar la URL y carga el otro modelo.
   const vehicle = useConfiguratorStore((s) => s.vehicle)
-  const modelUrl = VEHICLES.find((v) => v.id === vehicle)?.glb ?? MODEL_URL
+  const jaguarVariant = useConfiguratorStore((s) => s.jaguarVariant)
+  // El Jaguar tiene 2 modelos: configurable (jaguar.glb) y Titi negro (jaguar-titi.glb).
+  const baseUrl = VEHICLES.find((v) => v.id === vehicle)?.glb ?? MODEL_URL
+  const modelUrl = vehicle === 'jaguar' && jaguarVariant === 'titi' ? JAGUAR_TITI_GLB : baseUrl
   const gltf = useLoader(GLTFLoader, modelUrl, (loader) => {
     const dracoLoader = new DRACOLoader()
     dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.5/')
@@ -295,10 +298,10 @@ export function Model(props: any) {
         m.roughness = or * (1 - interiorFinish) + 0.3 * interiorFinish
         m.needsUpdate = true
       }
-      // JAGUAR configurable (solo 'jaguar'). 'titi' (Jaguar #3 negro) es FIJO:
-      // materiales horneados (negro + interior rojo + perno cromo) — no se recolorean,
-      // aunque cop:leather1.002 / jag1:chrome_rim1.001 compartan nombre con el #2.
-      if (vehicle === 'jaguar') {
+      // JAGUAR CONFIGURABLE (variante 'config'). La variante 'titi' (Jaguar #3 negro)
+      // es FIJA: materiales horneados (negro + interior rojo + perno cromo) — no se
+      // recolorean, aunque cop:leather1.002 / jag1:chrome_rim1.001 compartan nombre.
+      if (vehicle === 'jaguar' && jaguarVariant !== 'titi') {
         const jn = m.name.toLowerCase()
         if (jn === 'jaguar_body') {
           m.color.set(paintColor); m.metalness = paintFinish; m.roughness = 0.55 - 0.32 * paintFinish; m.needsUpdate = true
@@ -335,7 +338,7 @@ export function Model(props: any) {
       }
       for (const m of o.userData.__letterMats as THREE.MeshStandardMaterial[]) aplicar(m)
     })
-  }, [paintColor, paintFinish, rimColor, rimFinish, valleyColor, valleyFinish, decalColor, decalFinish, interiorTint, interiorFinish, applyToMaterials, paintMaterial, scene, vehicle])
+  }, [paintColor, paintFinish, rimColor, rimFinish, valleyColor, valleyFinish, decalColor, decalFinish, interiorTint, interiorFinish, applyToMaterials, paintMaterial, scene, vehicle, jaguarVariant])
 
   return (
     <group {...props} dispose={null}>

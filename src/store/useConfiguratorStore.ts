@@ -73,10 +73,12 @@ export const PRESET_ENVIRONMENTS = [
 export const VEHICLES = [
   { id: 'porsche', name: 'Porsche Gerstner', glb: '/models/SingerClean-v2.glb' },
   { id: 'jaguar', name: 'Jaguar E-Type', glb: '/models/jaguar.glb' },
-  // Titi = Jaguar E-Type #3 negro (faros blancos + piezas traseras escondidas).
-  // FIJO, no configurable: materiales horneados en el GLB (Car.tsx no lo recolorea).
-  { id: 'titi', name: 'Titi', glb: '/models/jaguar-titi.glb' },
 ] as const
+// El Jaguar E-Type tiene 2 VARIANTES DE MODELO: 'config' (jaguar.glb, configurable)
+// y 'titi' (Jaguar #3 negro fijo: faros blancos + piezas traseras escondidas). La
+// variante la activa un PRESET ("Titi" en Cargar) vía jaguarVariant — NO es un vehículo
+// aparte. Car.tsx carga jaguar-titi.glb cuando vehicle==='jaguar' && jaguarVariant==='titi'.
+export const JAGUAR_TITI_GLB = '/models/jaguar-titi.glb'
 export type VehicleId = typeof VEHICLES[number]['id']
 
 // El Jaguar es UN GLB configurable (jaguar.glb). Sus materiales recoloreables:
@@ -115,6 +117,9 @@ interface ConfiguratorState {
   toggleAutoRotate: () => void;
   vehicle: VehicleId;
   setVehicle: (v: VehicleId) => void;
+  // Variante de MODELO del Jaguar: 'config' (jaguar.glb configurable) | 'titi' (negro fijo).
+  jaguarVariant: 'config' | 'titi';
+  setJaguarVariant: (v: 'config' | 'titi') => void;
 }
 
 export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
@@ -149,4 +154,6 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   toggleAutoRotate: () => set((s) => ({ autoRotate: !s.autoRotate })),
   vehicle: 'porsche',
   setVehicle: (vehicle) => set({ vehicle }),
+  jaguarVariant: 'config',
+  setJaguarVariant: (jaguarVariant) => set({ jaguarVariant }),
 }))
