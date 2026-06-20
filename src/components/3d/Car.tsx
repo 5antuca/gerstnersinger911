@@ -304,7 +304,7 @@ export function Model(props: any) {
       if (vehicle === 'jaguar' && jaguarVariant !== 'titi') {
         const jn = m.name.toLowerCase()
         if (jn === 'jaguar_body') {
-          m.color.set(paintColor); m.metalness = paintFinish; m.roughness = 0.55 - 0.32 * paintFinish; m.needsUpdate = true
+          m.color.set(paintColor); m.needsUpdate = true // acabado (metal/rough) lo trae el GLB desde Blender, no el slider
         } else if (jn === 'jaguar_stripe') {
           m.color.set(decalColor); m.metalness = decalFinish; m.roughness = 0.55 - 0.32 * decalFinish; m.needsUpdate = true
         } else if (jn.startsWith('jag1:chrome_rim')) {
