@@ -313,7 +313,18 @@ export function Model(props: any) {
           m.envMapIntensity = 1.0 + 1.2 * paintFinish
           m.needsUpdate = true
         } else if (jn === 'jaguar_stripe') {
-          m.color.set(decalColor); m.metalness = decalFinish; m.roughness = 0.55 - 0.32 * decalFinish; m.needsUpdate = true
+          m.color.set(decalColor)
+          // "Sin franjas": si el color de la franja iguala al de la carrocería, igualamos
+          // también el acabado (metal/rough) al del body → las franjas desaparecen del todo.
+          // Solo igualar el color no alcanza: el sheen distinto las deja visibles.
+          if (decalColor.toLowerCase() === paintColor.toLowerCase()) {
+            m.metalness = paintFinish <= 0.5 ? 0 : (paintFinish - 0.5) * 1.7
+            m.roughness = paintFinish <= 0.5 ? 0.62 - 0.6 * paintFinish : 0.32 - 0.34 * (paintFinish - 0.5)
+          } else {
+            m.metalness = decalFinish
+            m.roughness = 0.55 - 0.32 * decalFinish
+          }
+          m.needsUpdate = true
         } else if (jn.startsWith('jag1:chrome_rim')) {
           m.color.set(rimColor); m.metalness = Math.max(rimFinish, 0.6); m.roughness = 0.5 - 0.35 * rimFinish; m.needsUpdate = true
         } else if (jn.startsWith('headlight_yellow')) {
