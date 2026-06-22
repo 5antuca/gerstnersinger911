@@ -17,12 +17,14 @@ function ColorPickerRGB({
   onHex,
   onFinish,
   size = 150,
+  satin = false,
 }: {
   hex: string
   finish: number
   onHex: (hex: string) => void
   onFinish: (v: number) => void
   size?: number
+  satin?: boolean
 }) {
   const [hsva, setHsva] = useState<HsvaColor>(() => ({ ...hexToHsva(hex), a: 1 }))
   return (
@@ -48,18 +50,25 @@ function ColorPickerRGB({
       />
       {/* Acabado: mate (izq) ↔ metálico (der). min-w-0 en el range: sin él su
           min-width intrínseco (~130px) infla la fila y desborda el panel en mobile. */}
-      <div className="flex items-center gap-1.5" style={{ width: size + 44 }} title="Acabado: mate ↔ metálico">
-        <span className="text-[8px] text-white/40 uppercase tracking-wider shrink-0">Mate</span>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={finish}
-          onChange={(e) => onFinish(parseFloat(e.target.value))}
-          className="flex-1 h-1 accent-white cursor-pointer min-w-0"
-        />
-        <span className="text-[8px] text-white/40 uppercase tracking-wider shrink-0">Metal</span>
+      <div className="flex flex-col items-center gap-0.5" style={{ width: size + 44 }} title={satin ? 'Acabado: mate ↔ satín ↔ metálico' : 'Acabado: mate ↔ metálico'}>
+        <div className="flex items-center gap-1.5 w-full">
+          <span className="text-[8px] text-white/40 uppercase tracking-wider shrink-0">Mate</span>
+          <div className="relative flex-1 min-w-0">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={finish}
+              onChange={(e) => onFinish(parseFloat(e.target.value))}
+              className="w-full h-1 accent-white cursor-pointer"
+            />
+            {/* tick del satín en el centro (paintFinish 0.5) */}
+            {satin && <span className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-2 bg-white/50" />}
+          </div>
+          <span className="text-[8px] text-white/40 uppercase tracking-wider shrink-0">Metal</span>
+        </div>
+        {satin && <span className="text-[7px] text-white/35 uppercase tracking-[0.2em] leading-none">Satín</span>}
       </div>
     </div>
   )
@@ -401,7 +410,7 @@ export default function Home() {
             <div className={panelRow}>
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Carrocería</span>
-                <ColorPickerRGB hex={paintColor} finish={paintFinish} onHex={setPaintColor} onFinish={setPaintFinish} size={wheelSize} />
+                <ColorPickerRGB hex={paintColor} finish={paintFinish} onHex={setPaintColor} onFinish={setPaintFinish} size={wheelSize} satin />
               </div>
               <div className={dividerCls} />
               <div className="flex items-center gap-3">
