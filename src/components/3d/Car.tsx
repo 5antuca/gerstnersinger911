@@ -316,6 +316,13 @@ export function Model(props: any) {
           m.color.set(decalColor); m.metalness = decalFinish; m.roughness = 0.55 - 0.32 * decalFinish; m.needsUpdate = true
         } else if (jn.startsWith('jag1:chrome_rim')) {
           m.color.set(rimColor); m.metalness = Math.max(rimFinish, 0.6); m.roughness = 0.5 - 0.35 * rimFinish; m.needsUpdate = true
+        } else if (jn.startsWith('headlight_yellow')) {
+          // El GLB del config trae el faro amarillo como metálico (metal 1) → refleja el
+          // entorno + los softboxes y el color "se mueve" según el ángulo. Forzamos metal 0
+          // para que el amarillo (base + emisión) quede estable y full, manteniendo el patrón
+          // del reflector (geometría). El Titi (variante 'titi') no entra acá.
+          m.metalness = 0
+          m.needsUpdate = true
         } else if (jn.startsWith('cop:leather1')) {
           m.color.set(interiorTint); m.needsUpdate = true
         }
