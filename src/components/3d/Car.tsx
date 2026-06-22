@@ -310,7 +310,7 @@ export function Model(props: any) {
           m.color.set(paintColor)
           m.metalness = paintFinish <= 0.5 ? 0 : (paintFinish - 0.5) * 1.7
           m.roughness = paintFinish <= 0.5 ? 0.62 - 0.6 * paintFinish : 0.32 - 0.34 * (paintFinish - 0.5)
-          m.envMapIntensity = 1.0 + 0.6 * paintFinish
+          m.envMapIntensity = 1.0 + 1.2 * paintFinish
           m.needsUpdate = true
         } else if (jn === 'jaguar_stripe') {
           m.color.set(decalColor); m.metalness = decalFinish; m.roughness = 0.55 - 0.32 * decalFinish; m.needsUpdate = true

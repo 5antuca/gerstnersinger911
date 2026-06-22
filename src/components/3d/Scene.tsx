@@ -12,6 +12,11 @@ import { Suspense, useState } from 'react'
 import { Model as Car } from './Car'
 import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 import * as THREE from 'three'
+import { RectAreaLightUniformsLib } from 'three-stdlib'
+
+// Inicializa las LTC textures que necesitan los rectAreaLight (softboxes de estudio
+// del Jaguar). Sin esto los rectAreaLight no iluminan. Idempotente.
+RectAreaLightUniformsLib.init()
 
 // Escena model-agnostic. Look calcado del Material Preview de Blender:
 // HDRI = forest.exr (el studiolight por defecto de Blender), iluminación SOLO
@@ -68,16 +73,20 @@ export function Scene() {
         </mesh>
       )}
 
-      {/* Luces de estudio SOLO para el Jaguar: el resto de la escena es HDRI puro
-          (match Blender). Pero la pintura satinada del Jaguar necesita una fuente
-          especular DEFINIDA — el forest.hdr es difuso (sin highlight brillante) y
-          AgX comprime los reflejos, así que sin esto la carrocería se ve plana/mate
-          por más que se baje la rugosidad. Key + fill desde lados opuestos para que
-          el highlight barra la carrocería al rotar. El Porsche se deja como estaba. */}
+      {/* Reflejos de estudio SOLO para el Jaguar (el Porsche queda HDRI puro).
+          El forest.hdr es difuso y AgX comprime los reflejos → la pintura metálica
+          se veía plana, muy distinta al Material Preview de Blender (que refleja la
+          HDRI de ciudad `city.exr`, brillante). Estos rectAreaLight actúan como
+          softboxes de estudio: la pintura metálica los refleja como highlights anchos
+          y brillantes (glossy, como Blender). Clave: en metal el difuso es ~0, así que
+          reflejan SIN correr el color difuso → el match de color del forest se mantiene.
+          El directional suma un brillo puntual tipo sol. */}
       {vehicle === 'jaguar' && (
         <>
-          <directionalLight position={[6, 10, -4]} intensity={2.5} />
-          <directionalLight position={[-7, 8, 6]} intensity={1.6} />
+          <rectAreaLight position={[0, 9, -2]} width={18} height={10} intensity={3} onUpdate={(l) => l.lookAt(0, 0.5, 0)} />
+          <rectAreaLight position={[-9, 5, -5]} width={10} height={8} intensity={2.4} onUpdate={(l) => l.lookAt(0, 0.5, 0)} />
+          <rectAreaLight position={[9, 5, 5]} width={10} height={8} intensity={2.4} onUpdate={(l) => l.lookAt(0, 0.5, 0)} />
+          <directionalLight position={[6, 10, -4]} intensity={1.5} />
         </>
       )}
 
