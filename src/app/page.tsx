@@ -216,7 +216,7 @@ export default function Home() {
       // Al elegir el Jaguar arranca en el CONFIGURABLE; el preset "Titi" lo pasa a la variante negra.
       setJaguarVariant('config')
       // Jaguar default = blanco con franjas azules + llantas cromo + interior rojo
-      setPaintColor('#E7E4DB'); setPaintFinish(0.7)
+      setPaintColor('#E7E4DB'); setPaintFinish(0.5)
       setDecalColor('#273f99'); setDecalFinish(0.5)
       setRimColor('#dadada'); setRimFinish(1)
       setInteriorTint('#980a00'); setInteriorFinish(0)
