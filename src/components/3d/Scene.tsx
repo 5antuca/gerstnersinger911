@@ -23,6 +23,7 @@ export function Scene() {
   // HDRI / iluminación seleccionada por el usuario (preset de drei).
   const environment = useConfiguratorStore((s) => s.environment)
   const autoRotate = useConfiguratorStore((s) => s.autoRotate)
+  const vehicle = useConfiguratorStore((s) => s.vehicle)
 
   return (
     <Canvas
@@ -65,6 +66,19 @@ export function Scene() {
             <GradientTexture stops={[0, 0.5, 1]} colors={['#0e0e11', '#2c2d33', '#121216']} size={1024} />
           </meshBasicMaterial>
         </mesh>
+      )}
+
+      {/* Luces de estudio SOLO para el Jaguar: el resto de la escena es HDRI puro
+          (match Blender). Pero la pintura satinada del Jaguar necesita una fuente
+          especular DEFINIDA — el forest.hdr es difuso (sin highlight brillante) y
+          AgX comprime los reflejos, así que sin esto la carrocería se ve plana/mate
+          por más que se baje la rugosidad. Key + fill desde lados opuestos para que
+          el highlight barra la carrocería al rotar. El Porsche se deja como estaba. */}
+      {vehicle === 'jaguar' && (
+        <>
+          <directionalLight position={[6, 10, -4]} intensity={2.5} />
+          <directionalLight position={[-7, 8, 6]} intensity={1.6} />
+        </>
       )}
 
       <Suspense fallback={null}>
