@@ -72,13 +72,13 @@ export const PRESET_ENVIRONMENTS = [
 // Vehículos del configurador. El primero es el default. Cada uno tiene su GLB.
 export const VEHICLES = [
   { id: 'porsche', name: 'Porsche Gerstner', glb: '/models/SingerClean-v2.glb' },
-  { id: 'jaguar', name: 'Jaguar E-Type', glb: '/models/jaguar.glb' },
+  { id: 'jaguar', name: 'Jaguar E-Type', glb: '/models/jaguar.glb?v=2' }, // ?v= = cache-bust: fuerza bajar el GLB nuevo (evita CDN/browser sirviendo el viejo arrugado)
 ] as const
 // El Jaguar E-Type tiene 2 VARIANTES DE MODELO: 'config' (jaguar.glb, configurable)
 // y 'titi' (Jaguar #3 negro fijo: faros blancos + piezas traseras escondidas). La
 // variante la activa un PRESET ("Titi" en Cargar) vía jaguarVariant — NO es un vehículo
 // aparte. Car.tsx carga jaguar-titi.glb cuando vehicle==='jaguar' && jaguarVariant==='titi'.
-export const JAGUAR_TITI_GLB = '/models/jaguar-titi.glb'
+export const JAGUAR_TITI_GLB = '/models/jaguar-titi.glb?v=2'
 export type VehicleId = typeof VEHICLES[number]['id']
 
 // El Jaguar es UN GLB configurable (jaguar.glb). Sus materiales recoloreables:

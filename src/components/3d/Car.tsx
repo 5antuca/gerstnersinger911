@@ -329,11 +329,25 @@ export function Model(props: any) {
         } else if (jn.startsWith('jag1:chrome_rim')) {
           m.color.set(rimColor); m.metalness = Math.max(rimFinish, 0.6); m.roughness = 0.5 - 0.35 * rimFinish; m.needsUpdate = true
         } else if (jn.startsWith('headlight_yellow')) {
-          // El GLB del config trae el faro amarillo como metálico (metal 1) → refleja el
-          // entorno + los softboxes y el color "se mueve" según el ángulo. Forzamos metal 0
-          // para que el amarillo (base + emisión) quede estable y full, manteniendo el patrón
-          // del reflector (geometría). El Titi (variante 'titi') no entra acá.
+          // Faro amarillo: metal 0 (estable, no refleja → no "cambia de color"). Pero su
+          // emisión venía muy fuerte (1.23) → lavaba el reflector y quedaba plano. La bajo y
+          // subo la rugosidad para que se vea el patrón del reflector (look "foto Blender",
+          // con profundidad, no calcomanía). El Titi (variante 'titi') no entra acá.
           m.metalness = 0
+          m.emissiveIntensity = 0.55
+          m.roughness = 0.4
+          m.needsUpdate = true
+        } else if (jn === 'light_glass.005') {
+          // Domo de vidrio del faro: subo el reflejo del entorno para que se note la curva
+          // del domo (profundidad) en vez de verse transparente/plano.
+          m.envMapIntensity = 2.5
+          m.roughness = 0.0
+          m.needsUpdate = true
+        } else if (jn.startsWith('chrome_trim')) {
+          // Aro cromado del faro: venía espejo total (metal 1 / rough 0.06) → reventaba blanco
+          // con el HDRI brillante. Bajo el reflejo y subo un toque la rugosidad → cromo sutil.
+          m.envMapIntensity = 0.5
+          m.roughness = 0.2
           m.needsUpdate = true
         } else if (jn.startsWith('cop:leather1')) {
           m.color.set(interiorTint); m.needsUpdate = true
