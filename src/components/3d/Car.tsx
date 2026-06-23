@@ -320,6 +320,7 @@ export function Model(props: any) {
           if (decalColor.toLowerCase() === paintColor.toLowerCase()) {
             m.metalness = paintFinish <= 0.5 ? 0 : (paintFinish - 0.5) * 1.7
             m.roughness = paintFinish <= 0.5 ? 0.62 - 0.6 * paintFinish : 0.32 - 0.34 * (paintFinish - 0.5)
+            m.envMapIntensity = 1.0 + 1.2 * paintFinish // igualar también el reflejo del entorno: el body es más reflectivo, sin esto la franja queda más opaca y se nota
           } else {
             m.metalness = decalFinish
             m.roughness = 0.55 - 0.32 * decalFinish
