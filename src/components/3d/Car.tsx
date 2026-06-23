@@ -298,6 +298,23 @@ export function Model(props: any) {
         m.roughness = or * (1 - interiorFinish) + 0.3 * interiorFinish
         m.needsUpdate = true
       }
+      // FAROS de TODOS los Jaguar (config + Titi): three.js renderiza el vidrio/transmisión
+      // más plano que el path-tracer de Blender. Estos ajustes corren para CUALQUIER variante
+      // (no solo el recolor del config) → recuperan la profundidad del faro como en Blender:
+      // domo con reflejo+espesor, reflector visible (no lavado), cromo sutil (no espejo reventado).
+      if (vehicle === 'jaguar') {
+        const hn = m.name.toLowerCase()
+        if (hn.startsWith('headlight_yellow')) {
+          m.metalness = 0; m.emissiveIntensity = 0.55; m.roughness = 0.4; m.needsUpdate = true
+        } else if (hn.startsWith('light_glass') && (m as unknown as THREE.MeshPhysicalMaterial).transmission > 0) {
+          const pm = m as unknown as THREE.MeshPhysicalMaterial
+          pm.thickness = 0.6; pm.envMapIntensity = 2.5; pm.roughness = 0.0; pm.needsUpdate = true
+        } else if (hn.startsWith('chrome_trim')) {
+          m.envMapIntensity = 0.5; m.roughness = 0.2; m.needsUpdate = true
+        } else if (hn === 'light.001') {
+          m.metalness = 0; m.roughness = 0.5; m.needsUpdate = true
+        }
+      }
       // JAGUAR CONFIGURABLE (variante 'config'). La variante 'titi' (Jaguar #3 negro)
       // es FIJA: materiales horneados (negro + interior rojo + perno cromo) — no se
       // recolorean, aunque cop:leather1.002 / jag1:chrome_rim1.001 compartan nombre.
