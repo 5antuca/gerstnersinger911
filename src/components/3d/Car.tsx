@@ -320,8 +320,11 @@ export function Model(props: any) {
       // recolorean, aunque cop:leather1.002 / jag1:chrome_rim1.001 compartan nombre.
       if (vehicle === 'jaguar' && jaguarVariant !== 'titi') {
         const jn = m.name.toLowerCase()
-        if (jn === 'jaguar_body') {
-          // slider re-mapeado: MATE(0)→SATÍN(0.5)→METAL(1). Satín = metal 0 + rough 0.32 + envMap
+        if (jn.startsWith('jaguar_body')) {
+          // startsWith (no ===): si quedan materiales Jaguar_Body huérfanos en el .blend, el
+          // re-export genera 'Jaguar_Body.00x' con sufijo — sin esto el recolor no matchea y el
+          // body queda con el color base del GLB (se ve blanco). slider re-mapeado:
+          // MATE(0)→SATÍN(0.5)→METAL(1). Satín = metal 0 + rough 0.32 + envMap
           // (brillo suave dieléctrico, NO metálico). Rugosidad piecewise: cae rápido hasta el satín,
           // después afina hacia metal. envMap sube la reflexión del entorno para que no se vea plano.
           m.color.set(paintColor)
@@ -329,7 +332,7 @@ export function Model(props: any) {
           m.roughness = paintFinish <= 0.5 ? 0.62 - 0.6 * paintFinish : 0.32 - 0.22 * (paintFinish - 0.5)
           m.envMapIntensity = 1.0 + 1.2 * paintFinish
           m.needsUpdate = true
-        } else if (jn === 'jaguar_stripe') {
+        } else if (jn.startsWith('jaguar_stripe')) {
           m.color.set(decalColor)
           // "Sin franjas": si el color de la franja iguala al de la carrocería, igualamos
           // también el acabado (metal/rough) al del body → las franjas desaparecen del todo.
