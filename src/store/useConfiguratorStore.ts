@@ -72,7 +72,7 @@ export const PRESET_ENVIRONMENTS = [
 // Vehículos del configurador. El primero es el default. Cada uno tiene su GLB.
 export const VEHICLES = [
   { id: 'porsche', name: 'Porsche Gerstner', glb: '/models/SingerClean-v2.glb' },
-  { id: 'jaguar', name: 'Jaguar E-Type', glb: '/models/jaguar.glb?v=3' }, // ?v= = cache-bust: subir el número cada vez que cambia el GLB para forzar bajar el nuevo (evita CDN/browser sirviendo el viejo)
+  { id: 'jaguar', name: 'Jaguar E-Type', glb: '/models/jaguar.glb?v=4' }, // ?v= = cache-bust: subir el número cada vez que cambia el GLB para forzar bajar el nuevo (evita CDN/browser sirviendo el viejo)
 ] as const
 // El Jaguar E-Type tiene 2 VARIANTES DE MODELO: 'config' (jaguar.glb, configurable)
 // y 'titi' (Jaguar #3 negro fijo: faros blancos + piezas traseras escondidas). La
