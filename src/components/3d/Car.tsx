@@ -315,6 +315,21 @@ export function Model(props: any) {
           m.metalness = 0; m.roughness = 0.5; m.needsUpdate = true
         }
       }
+      // CARROCERÍA del Titi (variante negra fija). El material body1 trae un clearcoat
+      // casi-espejo (Coat Roughness 0.01) horneado del .blend. En three.js un reflejo tan
+      // filoso muestrea el env PMREM (tope ~256px de three) → sobre el negro reflectivo se
+      // ven BLOQUES/facetas ("decimado/comprimido/arrugado"). Blender lo path-tracea a
+      // full-res y se ve liso; el config (más claro) lo disimula, el Titi negro lo expone
+      // (y eso que tiene MÁS polígonos que el config → no es geometría, es el reflejo).
+      // Fix: subir la rugosidad del clearcoat → muestrea mips borrosos → liso, sin perder
+      // el brillo satinado. La base (rough 0.41) ya difumina bien; solo el coat era filoso.
+      if (vehicle === 'jaguar' && jaguarVariant === 'titi') {
+        if (m.name.toLowerCase().startsWith('jag1:body1')) {
+          const pm = m as unknown as THREE.MeshPhysicalMaterial
+          pm.clearcoatRoughness = 0.18
+          pm.needsUpdate = true
+        }
+      }
       // JAGUAR CONFIGURABLE (variante 'config'). La variante 'titi' (Jaguar #3 negro)
       // es FIJA: materiales horneados (negro + interior rojo + perno cromo) — no se
       // recolorean, aunque cop:leather1.002 / jag1:chrome_rim1.001 compartan nombre.
