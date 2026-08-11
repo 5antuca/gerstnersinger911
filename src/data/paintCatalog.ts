@@ -76,6 +76,26 @@ export const JAGUAR_CATALOG: CatalogColor[] = [
   { name: 'Black', hex: '#0f0f0f' },
 ]
 
+// Famosos de otras marcas — para el buscador "escribí cualquier color" sin key.
+// hex aproximado, editable.
+export const FAMOUS_COLORS: CatalogColor[] = [
+  { name: 'Rosso Corsa (Ferrari)', hex: '#d40000' },
+  { name: 'Giallo Modena (Ferrari)', hex: '#f2e400' },
+  { name: 'Grigio Silverstone (Ferrari)', hex: '#6d7073' },
+  { name: 'Verde Mantis (Lamborghini)', hex: '#7fbb00' },
+  { name: 'Arancio Borealis (Lamborghini)', hex: '#e2620f' },
+  { name: 'Giallo Orion (Lamborghini)', hex: '#f4c200' },
+  { name: 'Nardo Grey (Audi)', hex: '#6a6c6e' },
+  { name: 'Daytona Grey (Audi)', hex: '#484b4f' },
+  { name: 'Misano Red (Audi)', hex: '#8f1420' },
+  { name: 'Estoril Blue (BMW)', hex: '#1c4e8f' },
+  { name: 'Alpine White (BMW)', hex: '#eef0ee' },
+  { name: 'Yas Marina Blue (BMW)', hex: '#2b6ea3' },
+  { name: 'Gulf Blue', hex: '#5aa9d6' },
+  { name: 'Gulf Orange', hex: '#ec6a1a' },
+]
+
 export function catalogForVehicle(vehicle: string): CatalogColor[] {
-  return vehicle === 'jaguar' ? JAGUAR_CATALOG : PORSCHE_CATALOG
+  const base = vehicle === 'jaguar' ? JAGUAR_CATALOG : PORSCHE_CATALOG
+  return [...base, ...FAMOUS_COLORS]
 }

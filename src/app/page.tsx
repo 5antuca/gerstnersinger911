@@ -11,10 +11,33 @@ import ShadeSlider from '@uiw/react-color-shade-slider'
 import { hexToHsva, hsvaToHex, type HsvaColor } from '@uiw/color-convert'
 import { catalogForVehicle, type CatalogColor } from '@/data/paintCatalog'
 
-/* Buscador de colores: sugiere del CATÁLOGO (fábrica) y, si escribís cualquier otro
-   color/descripción, lo pinta con IA (POST /api/color → LLM → hex). El menú se
-   renderiza en un PORTAL (document.body) y abre hacia arriba: así NO lo recorta el
-   overflow-x-auto del panel (que antes cortaba el dropdown). */
+/* Resuelve un texto a un hex SIN key/nube: acepta un código hex (#a1b2c3 o a1b2c3),
+   una forma corta (#abc) o cualquier nombre de color CSS (red, teal, crimson, gold…),
+   usando el propio navegador (canvas) para normalizarlo. null si no es válido. */
+function resolveColor(input: string): string | null {
+  const s = input.trim()
+  if (!s) return null
+  const raw = s.replace(/^#/, '')
+  if (/^[0-9a-fA-F]{6}$/.test(raw)) return '#' + raw.toLowerCase()
+  if (/^[0-9a-fA-F]{3}$/.test(raw)) return '#' + raw.split('').map((c) => c + c).join('').toLowerCase()
+  if (typeof document === 'undefined') return null
+  const ctx = document.createElement('canvas').getContext('2d')
+  if (!ctx) return null
+  // Doble centinela: si el nombre es inválido, fillStyle queda en el centinela (que
+  // difiere entre las dos pasadas) → a !== b. Si es válido, ambas resuelven al mismo color.
+  ctx.fillStyle = '#010203'; ctx.fillStyle = s; const a = ctx.fillStyle
+  ctx.fillStyle = '#040506'; ctx.fillStyle = s; const b = ctx.fillStyle
+  if (a !== b) return null
+  if (/^#[0-9a-f]{6}$/i.test(a)) return a.toLowerCase()
+  const m = a.match(/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/i)
+  if (m) return '#' + [1, 2, 3].map((i) => Number(m[i]).toString(16).padStart(2, '0')).join('')
+  return null
+}
+
+/* Buscador de colores (sin key): sugiere del CATÁLOGO (fábrica + famosos), y si
+   escribís un #hex o un nombre de color CSS lo aplica igual. El menú se renderiza en
+   un PORTAL (document.body) y abre hacia arriba: así NO lo recorta el overflow-x-auto
+   del panel (que antes cortaba el dropdown). */
 function ColorCatalogSearch({
   catalog,
   onPick,
@@ -26,7 +49,6 @@ function ColorCatalogSearch({
 }) {
   const [q, setQ] = useState('')
   const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const [rect, setRect] = useState<DOMRect | null>(null)
 
@@ -34,6 +56,7 @@ function ColorCatalogSearch({
   const ql = query.toLowerCase()
   const matches = (query ? catalog.filter((c) => c.name.toLowerCase().includes(ql)) : catalog).slice(0, 8)
   const exact = catalog.find((c) => c.name.toLowerCase() === ql)
+  const resolved = query && !exact ? resolveColor(query) : null
 
   // Reposiciona el menú (portal) sobre el input al abrir / al hacer scroll o resize.
   useEffect(() => {
@@ -48,26 +71,11 @@ function ColorCatalogSearch({
     }
   }, [open])
 
-  const paintWithAI = async (name: string) => {
-    const n = name.trim()
-    if (!n || loading) return
-    setLoading(true)
-    try {
-      const res = await fetch('/api/color', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: n }),
-      })
-      const data = await res.json()
-      if (res.ok && data.hex) { onPick(data.hex); setQ(n); setOpen(false) }
-    } catch { /* red caída → el usuario reintenta */ }
-    setLoading(false)
-  }
-
+  const apply = (hex: string, label: string) => { onPick(hex); setQ(label); setOpen(false) }
   const submit = () => {
-    if (exact) { onPick(exact.hex); setQ(exact.name); setOpen(false) }
-    else if (matches.length) { onPick(matches[0].hex); setQ(matches[0].name); setOpen(false) }
-    else paintWithAI(query)
+    if (exact) apply(exact.hex, exact.name)
+    else if (matches.length) apply(matches[0].hex, matches[0].name)
+    else if (resolved) apply(resolved, query)
   }
 
   const menu = open && rect ? createPortal(
@@ -79,22 +87,25 @@ function ColorCatalogSearch({
         <button
           key={c.name}
           type="button"
-          onMouseDown={(e) => { e.preventDefault(); onPick(c.hex); setQ(c.name); setOpen(false) }}
+          onMouseDown={(e) => { e.preventDefault(); apply(c.hex, c.name) }}
           className="flex items-center gap-2 w-full px-2.5 py-1.5 text-left text-xs text-white/80 hover:bg-white/10 transition-colors"
         >
           <span className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: c.hex }} />
           <span className="truncate">{c.name}</span>
         </button>
       ))}
-      {query && !exact && (
+      {resolved && !exact && (
         <button
           type="button"
-          onMouseDown={(e) => { e.preventDefault(); paintWithAI(query) }}
-          className={`flex items-center gap-2 w-full px-2.5 py-2 text-left text-xs text-white hover:bg-white/10 transition-colors ${matches.length ? 'border-t border-white/10' : ''}`}
+          onMouseDown={(e) => { e.preventDefault(); apply(resolved, query) }}
+          className={`flex items-center gap-2 w-full px-2.5 py-1.5 text-left text-xs text-white/90 hover:bg-white/10 transition-colors ${matches.length ? 'border-t border-white/10' : ''}`}
         >
-          <span className="shrink-0">{loading ? '⏳' : '🎨'}</span>
-          <span className="truncate">{loading ? 'Pintando con IA…' : <>Pintar <b>“{query}”</b> con IA</>}</span>
+          <span className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: resolved }} />
+          <span className="truncate">Aplicar “{query}” <span className="text-white/40">{resolved}</span></span>
         </button>
+      )}
+      {query && !matches.length && !resolved && (
+        <div className="px-2.5 py-2 text-xs text-white/40">Sin resultados</div>
       )}
     </div>,
     document.body,
@@ -110,7 +121,7 @@ function ColorCatalogSearch({
         onFocus={() => setOpen(true)}
         onBlur={() => window.setTimeout(() => setOpen(false), 200)}
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit() } }}
-        placeholder="Escribí un color…"
+        placeholder="Color, nombre o #hex…"
         className={`w-full rounded-full bg-white/10 border border-white/15 text-white placeholder-white/40 outline-none focus:border-white/40 ${compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
       />
       {menu}
