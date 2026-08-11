@@ -8,6 +8,53 @@ import Image from 'next/image'
 import Wheel from '@uiw/react-color-wheel'
 import ShadeSlider from '@uiw/react-color-shade-slider'
 import { hexToHsva, hsvaToHex, type HsvaColor } from '@uiw/color-convert'
+import { catalogForVehicle, type CatalogColor } from '@/data/paintCatalog'
+
+/* Buscador de colores de CATÁLOGO (fábrica): escribís el nombre (ej. "grey black")
+   y sugiere coincidencias; al elegir, aplica el hex a la carrocería. El menú abre
+   hacia ARRIBA (bottom-full) porque el panel de config vive abajo de la pantalla. */
+function ColorCatalogSearch({
+  catalog,
+  onPick,
+  compact = false,
+}: {
+  catalog: CatalogColor[]
+  onPick: (hex: string) => void
+  compact?: boolean
+}) {
+  const [q, setQ] = useState('')
+  const [open, setOpen] = useState(false)
+  const query = q.trim().toLowerCase()
+  const matches = (query ? catalog.filter((c) => c.name.toLowerCase().includes(query)) : catalog).slice(0, 8)
+  return (
+    <div className={`relative ${compact ? 'w-28' : 'w-36'}`}>
+      <input
+        type="text"
+        value={q}
+        onChange={(e) => { setQ(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+        placeholder="Buscar color…"
+        className={`w-full rounded-full bg-white/10 border border-white/15 text-white placeholder-white/40 outline-none focus:border-white/40 ${compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
+      />
+      {open && matches.length > 0 && (
+        <div className="absolute bottom-full left-0 mb-1.5 w-full max-h-52 overflow-auto rounded-xl border border-white/10 bg-neutral-900/95 py-1 shadow-xl z-50">
+          {matches.map((c) => (
+            <button
+              key={c.name}
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); onPick(c.hex); setQ(c.name); setOpen(false) }}
+              className="flex items-center gap-2 w-full px-2.5 py-1.5 text-left text-xs text-white/80 hover:bg-white/10 transition-colors"
+            >
+              <span className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: c.hex }} />
+              <span className="truncate">{c.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 /* Selector RGB circular: rueda completa de color + brillo + opacidad.
    Controla un hex + un alpha del store del configurador. */
@@ -390,6 +437,7 @@ export default function Home() {
                       style={{ backgroundColor: color.hex }} title={color.name} aria-label={`Pintura ${color.name}`} />
                   ))}
                 </div>
+                <ColorCatalogSearch catalog={catalogForVehicle(vehicle)} onPick={setPaintColor} compact={compact} />
               </div>
               <div className={dividerCls} />
               <div className="flex items-center gap-3">
@@ -411,6 +459,7 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Carrocería</span>
                 <ColorPickerRGB hex={paintColor} finish={paintFinish} onHex={setPaintColor} onFinish={setPaintFinish} size={wheelSize} satin />
+                <ColorCatalogSearch catalog={catalogForVehicle(vehicle)} onPick={setPaintColor} compact={compact} />
               </div>
               <div className={dividerCls} />
               <div className="flex items-center gap-3">
