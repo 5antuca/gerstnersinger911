@@ -1,6 +1,7 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useProgress } from '@react-three/drei'
 import { Scene } from '@/components/3d/Scene'
 import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS, PRESET_DECALS, PRESET_VALLEYS, VEHICLES, type VehicleId } from '@/store/useConfiguratorStore'
@@ -10,9 +11,10 @@ import ShadeSlider from '@uiw/react-color-shade-slider'
 import { hexToHsva, hsvaToHex, type HsvaColor } from '@uiw/color-convert'
 import { catalogForVehicle, type CatalogColor } from '@/data/paintCatalog'
 
-/* Buscador de colores de CATÁLOGO (fábrica): escribís el nombre (ej. "grey black")
-   y sugiere coincidencias; al elegir, aplica el hex a la carrocería. El menú abre
-   hacia ARRIBA (bottom-full) porque el panel de config vive abajo de la pantalla. */
+/* Buscador de colores: sugiere del CATÁLOGO (fábrica) y, si escribís cualquier otro
+   color/descripción, lo pinta con IA (POST /api/color → LLM → hex). El menú se
+   renderiza en un PORTAL (document.body) y abre hacia arriba: así NO lo recorta el
+   overflow-x-auto del panel (que antes cortaba el dropdown). */
 function ColorCatalogSearch({
   catalog,
   onPick,
@@ -24,34 +26,94 @@ function ColorCatalogSearch({
 }) {
   const [q, setQ] = useState('')
   const [open, setOpen] = useState(false)
-  const query = q.trim().toLowerCase()
-  const matches = (query ? catalog.filter((c) => c.name.toLowerCase().includes(query)) : catalog).slice(0, 8)
+  const [loading, setLoading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [rect, setRect] = useState<DOMRect | null>(null)
+
+  const query = q.trim()
+  const ql = query.toLowerCase()
+  const matches = (query ? catalog.filter((c) => c.name.toLowerCase().includes(ql)) : catalog).slice(0, 8)
+  const exact = catalog.find((c) => c.name.toLowerCase() === ql)
+
+  // Reposiciona el menú (portal) sobre el input al abrir / al hacer scroll o resize.
+  useEffect(() => {
+    if (!open) return
+    const update = () => setRect(inputRef.current?.getBoundingClientRect() ?? null)
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [open])
+
+  const paintWithAI = async (name: string) => {
+    const n = name.trim()
+    if (!n || loading) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/color', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: n }),
+      })
+      const data = await res.json()
+      if (res.ok && data.hex) { onPick(data.hex); setQ(n); setOpen(false) }
+    } catch { /* red caída → el usuario reintenta */ }
+    setLoading(false)
+  }
+
+  const submit = () => {
+    if (exact) { onPick(exact.hex); setQ(exact.name); setOpen(false) }
+    else if (matches.length) { onPick(matches[0].hex); setQ(matches[0].name); setOpen(false) }
+    else paintWithAI(query)
+  }
+
+  const menu = open && rect ? createPortal(
+    <div
+      style={{ position: 'fixed', left: rect.left, bottom: window.innerHeight - rect.top + 6, width: Math.max(rect.width, 190), zIndex: 9999 }}
+      className="max-h-56 overflow-auto rounded-xl border border-white/10 bg-neutral-900/95 backdrop-blur py-1 shadow-2xl"
+    >
+      {matches.map((c) => (
+        <button
+          key={c.name}
+          type="button"
+          onMouseDown={(e) => { e.preventDefault(); onPick(c.hex); setQ(c.name); setOpen(false) }}
+          className="flex items-center gap-2 w-full px-2.5 py-1.5 text-left text-xs text-white/80 hover:bg-white/10 transition-colors"
+        >
+          <span className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: c.hex }} />
+          <span className="truncate">{c.name}</span>
+        </button>
+      ))}
+      {query && !exact && (
+        <button
+          type="button"
+          onMouseDown={(e) => { e.preventDefault(); paintWithAI(query) }}
+          className={`flex items-center gap-2 w-full px-2.5 py-2 text-left text-xs text-white hover:bg-white/10 transition-colors ${matches.length ? 'border-t border-white/10' : ''}`}
+        >
+          <span className="shrink-0">{loading ? '⏳' : '🎨'}</span>
+          <span className="truncate">{loading ? 'Pintando con IA…' : <>Pintar <b>“{query}”</b> con IA</>}</span>
+        </button>
+      )}
+    </div>,
+    document.body,
+  ) : null
+
   return (
     <div className={`relative ${compact ? 'w-28' : 'w-36'}`}>
       <input
+        ref={inputRef}
         type="text"
         value={q}
         onChange={(e) => { setQ(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
-        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
-        placeholder="Buscar color…"
+        onBlur={() => window.setTimeout(() => setOpen(false), 200)}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit() } }}
+        placeholder="Escribí un color…"
         className={`w-full rounded-full bg-white/10 border border-white/15 text-white placeholder-white/40 outline-none focus:border-white/40 ${compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'}`}
       />
-      {open && matches.length > 0 && (
-        <div className="absolute bottom-full left-0 mb-1.5 w-full max-h-52 overflow-auto rounded-xl border border-white/10 bg-neutral-900/95 py-1 shadow-xl z-50">
-          {matches.map((c) => (
-            <button
-              key={c.name}
-              type="button"
-              onMouseDown={(e) => { e.preventDefault(); onPick(c.hex); setQ(c.name); setOpen(false) }}
-              className="flex items-center gap-2 w-full px-2.5 py-1.5 text-left text-xs text-white/80 hover:bg-white/10 transition-colors"
-            >
-              <span className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: c.hex }} />
-              <span className="truncate">{c.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {menu}
     </div>
   )
 }
