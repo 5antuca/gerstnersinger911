@@ -317,7 +317,9 @@ export default function Home() {
     setInteriorTint(p.cfg.interiorTint); setInteriorFinish(p.cfg.interiorFinish ?? 0)
     setRimColor(p.cfg.rimColor); setRimFinish(p.cfg.rimFinish ?? 1)
     setValleyColor(p.cfg.valleyColor); setValleyFinish(p.cfg.valleyFinish ?? 0.4)
-    setEnvironment(p.cfg.environment as Parameters<typeof setEnvironment>[0])
+    // guard: perfiles viejos sin iluminación guardada caerían en undefined y romperían
+    // el Environment de la escena → default a 'city' (re-guardá el perfil para fijar la luz).
+    setEnvironment((p.cfg.environment as Parameters<typeof setEnvironment>[0]) ?? 'city')
   }
   const borrarPerfil = (name: string) => {
     if (!window.confirm(`¿Borrar el perfil "${name}"? Queda una copia en la papelera de la nube.`)) return
