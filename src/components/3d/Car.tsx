@@ -238,12 +238,13 @@ export function Model(props: any) {
   // asiento; puertas z = largo del auto; traseros x = ancho del auto.
   useLayoutEffect(() => {
     const HW = 0.017 // semi-ancho de cada franja (m) → franja ~3.4cm
-    const PAIR = 0.05 // separación entre los centros del par (m) → luz ~1.6cm
+    const PAIR = 0.04 // separación entre los centros del par (m) → luz ~0.6cm
     const pair = (mid: number) => [mid - PAIR / 2, mid + PAIR / 2]
     // Corrimiento del par hacia AFUERA (lado puerta), espejado izq/der: derecha
     // de la butaca derecha / izquierda de la izquierda, igual en los traseros
     // (foto Singer de referencia del user, 2026-08-12).
-    const SEAT_OUTBOARD = 0.08 // butacas delanteras (m desde el centro del asiento)
+    const SEAT_OUTBOARD = 0.08 // butaca acompañante (der; m desde el centro del asiento)
+    const SEAT_OUTBOARD_L = 0.06 // butaca conductor (izq): 2cm más hacia el acompañante
     const REAR_OUTBOARD = 0.06 // respaldos + almohadón traseros
     // GLTFLoader saca los puntos de los nombres: 'Cube.006' → 'Cube006'.
     const TARGETS: { test: RegExp; axis: 'x' | 'y' | 'z'; centers: (bb: THREE.Box3, mesh: THREE.Mesh) => number[] }[] = [
@@ -256,15 +257,16 @@ export function Model(props: any) {
         centers: (bb, mesh) => {
           mesh.updateWorldMatrix(true, false)
           const wx = new THREE.Vector3().setFromMatrixPosition(mesh.matrixWorld).x
-          const sign = wx > 0 ? -1 : 1
-          return pair((bb.min.z + bb.max.z) / 2 + sign * SEAT_OUTBOARD)
+          // derecha (acompañante): −z afuera, offset pleno; izquierda
+          // (conductor): +z afuera, offset 2cm menor (pedido 2026-08-12).
+          return pair((bb.min.z + bb.max.z) / 2 + (wx > 0 ? -SEAT_OUTBOARD : SEAT_OUTBOARD_L))
         },
       },
       // Puertas: par vertical hacia el FRENTE de la puerta (mock 2; corrido
-      // +4cm más adelante a pedido, 2026-08-12). Mismo punto longitudinal del
-      // auto en ambas (world z≈+0.16, restada la translation del nodo).
-      { test: /^Cube006/, axis: 'z', centers: () => pair(0.16 - 0.1383) },
-      { test: /^Cube083/, axis: 'z', centers: () => pair(0.16 - 0.0125) },
+      // +4cm y luego +2cm más adelante a pedido, 2026-08-12). Mismo punto
+      // longitudinal del auto en ambas (world z≈+0.18, restada la translation).
+      { test: /^Cube006/, axis: 'z', centers: () => pair(0.18 - 0.1383) },
+      { test: /^Cube083/, axis: 'z', centers: () => pair(0.18 - 0.0125) },
       // Traseros: respaldos (x mundo horneado: derecho mid 0.28 → afuera es
       // +x; izquierdo mid −0.29 → afuera es −x) + almohadón (una malla que
       // cubre ambos lados → un par por lado, alineado con los respaldos ya
