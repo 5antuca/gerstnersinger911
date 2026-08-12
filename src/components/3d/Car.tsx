@@ -318,6 +318,15 @@ export function Model(props: any) {
                 '    for (int i = 0; i < 4; i++) {\n' +
                 '      sm = max(sm, 1.0 - smoothstep(uStripeHW * 0.55, uStripeHW, abs(vStripeU - uStripeCenters[i])));\n' +
                 '    }\n' +
+                // Trenzado: la franja no es continua — colorea cuadradito por
+                // medio (damero) siguiendo la trama REAL del tejido. La textura
+                // weave_dashmatch tiene 8×10 cuadraditos por tile (medido por
+                // DFT + visual), y el damero va en el MISMO espacio UV que el
+                // map → cada cuadrado coloreado cae sobre una hebra real.
+                '    #ifdef USE_MAP\n' +
+                '    float wcheck = mod(floor(vMapUv.x * 8.0) + floor(vMapUv.y * 10.0), 2.0);\n' +
+                '    sm *= wcheck;\n' +
+                '    #endif\n' +
                 '    diffuseColor.rgb = mix(diffuseColor.rgb, uStripeColor, sm * uStripeOn);\n' +
                 '  }'
             )
