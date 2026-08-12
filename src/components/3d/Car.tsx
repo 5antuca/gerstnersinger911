@@ -243,8 +243,11 @@ export function Model(props: any) {
     // Corrimiento del par hacia AFUERA (lado puerta), espejado izq/der: derecha
     // de la butaca derecha / izquierda de la izquierda, igual en los traseros
     // (foto Singer de referencia del user, 2026-08-12).
-    const SEAT_OUTBOARD = 0.08 // butaca acompañante (der; m desde el centro del asiento)
-    const SEAT_OUTBOARD_L = 0.06 // butaca conductor (izq): 2cm más hacia el acompañante
+    // Offsets asimétricos a propósito: compensan la diferencia de geometría
+    // entre las dos butacas para que el par quede a la MISMA distancia del
+    // borde en ambas (calibrado a ojo por el user, 2026-08-12).
+    const SEAT_OUTBOARD = 0.055 // butaca acompañante (der; m desde el centro del asiento)
+    const SEAT_OUTBOARD_L = 0.07 // butaca conductor (izq)
     const REAR_OUTBOARD = 0.06 // respaldos + almohadón traseros
     // GLTFLoader saca los puntos de los nombres: 'Cube.006' → 'Cube006'.
     const TARGETS: { test: RegExp; axis: 'x' | 'y' | 'z'; centers: (bb: THREE.Box3, mesh: THREE.Mesh) => number[] }[] = [
