@@ -109,6 +109,9 @@ export function Model(props: any) {
   }) as unknown as GLTF
 
   const scene = gltf.scene
+  // Handle de diagnóstico (como window.SC del visor crudo): permite inspeccionar
+  // materiales/uniforms en vivo desde la consola sin rebuild. Inofensivo en prod.
+  if (typeof window !== 'undefined') (window as unknown as Record<string, unknown>).__carScene = scene
   const rigRef = useRef<THREE.Group>(null)
   const paintColor = useConfiguratorStore((s) => s.paintColor)
   const paintFinish = useConfiguratorStore((s) => s.paintFinish)
@@ -118,8 +121,13 @@ export function Model(props: any) {
   const decalFinish = useConfiguratorStore((s) => s.decalFinish)
   const interiorTint = useConfiguratorStore((s) => s.interiorTint)
   const interiorFinish = useConfiguratorStore((s) => s.interiorFinish)
+  const stripeColor = useConfiguratorStore((s) => s.stripeColor)
   const rimFinish = useConfiguratorStore((s) => s.rimFinish)
   const valleyFinish = useConfiguratorStore((s) => s.valleyFinish)
+
+  // Estado de las franjas de butaca, leído por el onBeforeCompile al compilar.
+  const stripeColorRef = useRef(new THREE.Color('#1e3f78'))
+  const stripeOnRef = useRef(0)
 
   // Pintura dinámica: physical con clearcoat (mismo look que la laca del .blend).
   const paintMaterial = useMemo(() => {
@@ -218,6 +226,107 @@ export function Model(props: any) {
     rig.position.y = -floorY
     rig.position.z = -center.z
   }, [scene])
+
+  // FRANJAS del tejido (feature web). Un PAR de franjas finas verticales por
+  // pieza (mock Canva del user, 2026-08-12): butacas delanteras + paneles de
+  // puerta + traseros (respaldos y almohadón). Quedan DEBAJO del logo RECARO
+  // y los ojales porque esos son mallas aparte encima del tejido. El material
+  // compartido `PBR_Basket_Weave_001` se CLONA por-mesh (el dash y los demás
+  // no se rayan) y el clon sigue empezando con "pbr_basket_weave" → conserva
+  // el interiorTint en la base. Posiciones en METROS locales de cada malla
+  // (medidas del GLB SingerClean-v2); ejes locales: butacas z = ancho del
+  // asiento; puertas z = largo del auto; traseros x = ancho del auto.
+  useLayoutEffect(() => {
+    const HW = 0.011 // semi-ancho de cada franja (m) → franja ~2.2cm
+    const PAIR = 0.035 // separación entre los centros del par (m)
+    const pair = (mid: number) => [mid - PAIR / 2, mid + PAIR / 2]
+    // GLTFLoader saca los puntos de los nombres: 'Cube.006' → 'Cube006'.
+    const TARGETS: { test: RegExp; axis: 'x' | 'y' | 'z'; centers: (bb: THREE.Box3) => number[] }[] = [
+      // Butacas delanteras: par centrado en el ancho (z local, mid del bbox).
+      { test: /^butaca_fina/, axis: 'z', centers: (bb) => pair((bb.min.z + bb.max.z) / 2) },
+      // Puertas: par vertical hacia el FRENTE de la puerta (mock 2). Mismo punto
+      // longitudinal del auto en ambas (world z≈+0.12, restada la translation del nodo).
+      { test: /^Cube006/, axis: 'z', centers: () => pair(0.12 - 0.1383) },
+      { test: /^Cube083/, axis: 'z', centers: () => pair(0.12 - 0.0125) },
+      // Traseros (mock 3): respaldos (par centrado en cada uno) + almohadón
+      // (una malla que cubre ambos lados → un par por lado, alineado con los
+      // respaldos: centros x ±0.28/−0.29 medidos del GLB).
+      { test: /^RESPALDO_editar001/, axis: 'x', centers: (bb) => pair((bb.min.x + bb.max.x) / 2) },
+      { test: /^RESPALDO_editar/, axis: 'x', centers: (bb) => pair((bb.min.x + bb.max.x) / 2) },
+      { test: /^Plane167/, axis: 'x', centers: () => [...pair(-0.29), ...pair(0.28)] },
+    ]
+
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return
+      const tgt = TARGETS.find((t) => t.test.test(o.name))
+      if (!tgt) return
+      const geo = o.geometry as THREE.BufferGeometry
+      if (!geo.boundingBox) geo.computeBoundingBox()
+      const centers = tgt.centers(geo.boundingBox as THREE.Box3)
+      const cvec = new THREE.Vector4(
+        centers[0] ?? 1e9, centers[1] ?? 1e9, centers[2] ?? 1e9, centers[3] ?? 1e9
+      )
+
+      const cloneWeave = (m: THREE.Material | null): THREE.Material | null => {
+        if (!m || !/^pbr_basket_weave/i.test(m.name)) return m
+        if ((m as THREE.Material).userData?.__isSeatStripe) return m
+        const c = (m as THREE.MeshStandardMaterial).clone()
+        c.name = m.name + '_seatstripe'
+        c.userData = { __isSeatStripe: true } // limpio → el interiorTint re-cachea __origColor fresco
+        c.customProgramCacheKey = () => 'seatstripe_' + c.uuid
+        c.onBeforeCompile = (shader) => {
+          shader.uniforms.uStripeColor = { value: stripeColorRef.current.clone() }
+          shader.uniforms.uStripeOn = { value: stripeOnRef.current }
+          shader.uniforms.uStripeCenters = { value: cvec }
+          shader.uniforms.uStripeHW = { value: HW }
+          shader.vertexShader =
+            'varying float vStripeU;\n' +
+            shader.vertexShader.replace(
+              '#include <begin_vertex>',
+              '#include <begin_vertex>\n  vStripeU = position.' + tgt.axis + ';'
+            )
+          shader.fragmentShader =
+            'varying float vStripeU;\nuniform vec3 uStripeColor;\nuniform float uStripeOn;\nuniform vec4 uStripeCenters;\nuniform float uStripeHW;\n' +
+            shader.fragmentShader.replace(
+              '#include <map_fragment>',
+              '#include <map_fragment>\n' +
+                '  {\n' +
+                '    float sm = 0.0;\n' +
+                '    for (int i = 0; i < 4; i++) {\n' +
+                '      sm = max(sm, 1.0 - smoothstep(uStripeHW * 0.55, uStripeHW, abs(vStripeU - uStripeCenters[i])));\n' +
+                '    }\n' +
+                '    diffuseColor.rgb = mix(diffuseColor.rgb, uStripeColor, sm * uStripeOn);\n' +
+                '  }'
+            )
+          c.userData.stripeShader = shader
+        }
+        c.needsUpdate = true
+        return c
+      }
+
+      if (Array.isArray(o.material)) o.material = o.material.map(cloneWeave) as THREE.Material[]
+      else o.material = cloneWeave(o.material) as THREE.Material
+    })
+  }, [scene])
+
+  // Empujar el color/on-off de las franjas a los shaders ya compilados (y a los
+  // refs que lee el onBeforeCompile en la primera compilación).
+  useLayoutEffect(() => {
+    const on = stripeColor && stripeColor !== 'off' ? 1 : 0
+    stripeOnRef.current = on
+    if (on) stripeColorRef.current.set(stripeColor)
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return
+      const mats = Array.isArray(o.material) ? o.material : [o.material]
+      for (const m of mats) {
+        const sh = m && (m as THREE.Material).userData?.stripeShader
+        if (sh) {
+          sh.uniforms.uStripeOn.value = on
+          if (on) sh.uniforms.uStripeColor.value.set(stripeColor)
+        }
+      }
+    })
+  }, [stripeColor, scene])
 
   // Selectores dinámicos: pintura + llantas + adhesivos.
   useLayoutEffect(() => {

@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useProgress } from '@react-three/drei'
 import { Scene } from '@/components/3d/Scene'
-import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS, PRESET_DECALS, PRESET_VALLEYS, VEHICLES, type VehicleId } from '@/store/useConfiguratorStore'
+import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS, PRESET_DECALS, PRESET_STRIPES, PRESET_VALLEYS, VEHICLES, type VehicleId } from '@/store/useConfiguratorStore'
 import Image from 'next/image'
 import Wheel from '@uiw/react-color-wheel'
 import ShadeSlider from '@uiw/react-color-shade-slider'
@@ -243,7 +243,7 @@ function useMediaQuery(query: string) {
 }
 
 export default function Home() {
-  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorFinish, setInteriorFinish, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle, jaguarVariant, setJaguarVariant } = useConfiguratorStore()
+  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorFinish, setInteriorFinish, stripeColor, setStripeColor, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle, jaguarVariant, setJaguarVariant } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
   const [activeTab, setActiveTab] = useState<null | 'vehiculos' | 'pintura' | 'interior' | 'llantas' | 'luz' | 'cargar' | 'guardar'>(null)
@@ -254,7 +254,7 @@ export default function Home() {
   // robusta es /api/perfiles (nube compartida entre dispositivos). Al montar
   // se mergean por nombre (gana el updatedAt más nuevo y los tombstones de la
   // nube tapan lo borrado) y se sube lo que la nube no tenga.
-  type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorFinish?: number; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string; vehicle?: string; jaguarVariant?: string }; updatedAt?: number }
+  type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorFinish?: number; stripeColor?: string; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string; vehicle?: string; jaguarVariant?: string }; updatedAt?: number }
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [nombrePerfil, setNombrePerfil] = useState('')
   // 'cloud' = sincronizado con la nube; 'local' = solo este navegador.
@@ -298,7 +298,7 @@ export default function Home() {
   const guardarPerfil = () => {
     const name = nombrePerfil.trim()
     if (!name) return
-    const cfg = { paintColor, paintFinish, decalColor, decalFinish, interiorTint, interiorFinish, rimColor, rimFinish, valleyColor, valleyFinish, environment, vehicle, jaguarVariant }
+    const cfg = { paintColor, paintFinish, decalColor, decalFinish, interiorTint, interiorFinish, stripeColor, rimColor, rimFinish, valleyColor, valleyFinish, environment, vehicle, jaguarVariant }
     const perfil: Perfil = { name, cfg, updatedAt: Date.now() }
     const nuevos = [...perfiles.filter((p) => p.name !== name), perfil]
     setPerfiles(nuevos)
@@ -315,6 +315,7 @@ export default function Home() {
     setPaintColor(p.cfg.paintColor); setPaintFinish(p.cfg.paintFinish ?? 0.85)
     setDecalColor(p.cfg.decalColor); setDecalFinish(p.cfg.decalFinish ?? 0)
     setInteriorTint(p.cfg.interiorTint); setInteriorFinish(p.cfg.interiorFinish ?? 0)
+    setStripeColor(p.cfg.stripeColor ?? 'off')
     setRimColor(p.cfg.rimColor); setRimFinish(p.cfg.rimFinish ?? 1)
     setValleyColor(p.cfg.valleyColor); setValleyFinish(p.cfg.valleyFinish ?? 0.4)
     // guard: perfiles viejos sin iluminación guardada caerían en undefined y romperían
@@ -576,6 +577,20 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Tono del cuero</span>
                 <ColorPickerRGB hex={interiorTint} finish={interiorFinish} onHex={setInteriorTint} onFinish={setInteriorFinish} size={wheelSize} />
+              </div>
+              <div className={dividerCls} />
+              <div className="flex items-center gap-3">
+                <span className={popTitle + ' !mb-0 shrink-0'}>Franjas butacas</span>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {PRESET_STRIPES.map((s) => (
+                    <button key={s.id} onClick={() => setStripeColor(s.hex)}
+                      className={swatchCls(stripeColor === s.hex) + ' relative flex items-center justify-center overflow-hidden'}
+                      style={{ backgroundColor: s.hex === 'off' ? '#2b2b2b' : s.hex }}
+                      title={s.name} aria-label={`Franjas ${s.name}`}>
+                      {s.hex === 'off' && <span className="block w-[140%] h-px bg-white/45 rotate-45" />}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}

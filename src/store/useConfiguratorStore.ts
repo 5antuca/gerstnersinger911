@@ -40,6 +40,19 @@ export const PRESET_INTERIORS = [
   { id: 'brown-plaid', hex: '#5c3a21', tint: '#8a5a3c', name: 'Brown Plaid', image: '/img/interiors/brown-plaid.jpg' },
 ]
 
+// Franjas del tejido de las BUTACAS (feature web: overlay recoloreable en el
+// shader del asiento, no está horneado en el GLB). El primero = "sin franjas"
+// (sentinel 'off') = default; el modelo no lleva franjas salvo que se elijan.
+export const PRESET_STRIPES = [
+  { id: 'off', hex: 'off', name: 'Sin franjas' },
+  { id: 'azul', hex: '#1e3f78', name: 'Azul' },
+  { id: 'naranja', hex: '#c8641e', name: 'Naranja' },
+  { id: 'rojo', hex: '#a52222', name: 'Rojo' },
+  { id: 'crema', hex: '#d8c9a0', name: 'Crema' },
+  { id: 'verde', hex: '#2f5d3a', name: 'Verde' },
+  { id: 'negro', hex: '#141414', name: 'Negro' },
+]
+
 // Colores predeterminados de los ADHESIVOS (franjas + banda PORSCHE).
 // El primero es el oro de fábrica del auto (DECAL_COLOR del .blend).
 export const PRESET_DECALS = [
@@ -105,6 +118,9 @@ interface ConfiguratorState {
   setValleyFinish: (v: number) => void;
   interiorTint: string;
   setInteriorTint: (tint: string) => void;
+  // Color de las franjas de las butacas ('off' = sin franjas).
+  stripeColor: string;
+  setStripeColor: (color: string) => void;
   rimColor: string;
   setRimColor: (color: string) => void;
   valleyColor: string;
@@ -142,6 +158,9 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   // Blanco = texturas camel originales del GLB sin alterar.
   interiorTint: '#ffffff',
   setInteriorTint: (tint) => set({ interiorTint: tint }),
+  // 'off' = butacas sin franjas (default). Elegir un color las prende.
+  stripeColor: 'off',
+  setStripeColor: (color) => set({ stripeColor: color }),
   rimColor: PRESET_RIMS[0].hex,
   setRimColor: (color) => set({ rimColor: color }),
   valleyColor: PRESET_VALLEYS[0].hex,
