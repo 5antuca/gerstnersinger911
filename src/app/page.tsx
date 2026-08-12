@@ -133,16 +133,17 @@ function ColorCatalogSearch({
    Controla un hex + un alpha del store del configurador. */
 function ColorPickerRGB({
   hex,
-  finish,
+  finish = 0,
   onHex,
   onFinish,
   size = 150,
   satin = false,
 }: {
   hex: string
-  finish: number
+  finish?: number
   onHex: (hex: string) => void
-  onFinish: (v: number) => void
+  // Sin onFinish → se oculta el slider Mate↔Metal (ej. franjas: solo color).
+  onFinish?: (v: number) => void
   size?: number
   satin?: boolean
 }) {
@@ -170,6 +171,7 @@ function ColorPickerRGB({
       />
       {/* Acabado: mate (izq) ↔ metálico (der). min-w-0 en el range: sin él su
           min-width intrínseco (~130px) infla la fila y desborda el panel en mobile. */}
+      {onFinish && (
       <div className="flex flex-col items-center gap-0.5" style={{ width: size + 44 }} title={satin ? 'Acabado: mate ↔ satín ↔ metálico' : 'Acabado: mate ↔ metálico'}>
         <div className="flex items-center gap-1.5 w-full">
           <span className="text-[8px] text-white/40 uppercase tracking-wider shrink-0">Mate</span>
@@ -190,6 +192,7 @@ function ColorPickerRGB({
         </div>
         {satin && <span className="text-[7px] text-white/35 uppercase tracking-[0.2em] leading-none">Satín</span>}
       </div>
+      )}
     </div>
   )
 }
@@ -581,6 +584,9 @@ export default function Home() {
               <div className={dividerCls} />
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Franjas butacas</span>
+                {/* Rueda RGB libre (tocarla prende las franjas); sin slider de
+                    acabado (las franjas son solo color sobre el tejido). */}
+                <ColorPickerRGB hex={stripeColor === 'off' ? '#1e3f78' : stripeColor} onHex={setStripeColor} size={wheelSize} />
                 <div className="grid grid-cols-4 gap-1.5">
                   {PRESET_STRIPES.map((s) => (
                     <button key={s.id} onClick={() => setStripeColor(s.hex)}

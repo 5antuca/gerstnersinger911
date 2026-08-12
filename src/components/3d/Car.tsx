@@ -237,23 +237,41 @@ export function Model(props: any) {
   // (medidas del GLB SingerClean-v2); ejes locales: butacas z = ancho del
   // asiento; puertas z = largo del auto; traseros x = ancho del auto.
   useLayoutEffect(() => {
-    const HW = 0.011 // semi-ancho de cada franja (m) → franja ~2.2cm
-    const PAIR = 0.035 // separación entre los centros del par (m)
+    const HW = 0.017 // semi-ancho de cada franja (m) → franja ~3.4cm
+    const PAIR = 0.05 // separación entre los centros del par (m) → luz ~1.6cm
     const pair = (mid: number) => [mid - PAIR / 2, mid + PAIR / 2]
+    // Corrimiento del par hacia AFUERA (lado puerta), espejado izq/der: derecha
+    // de la butaca derecha / izquierda de la izquierda, igual en los traseros
+    // (foto Singer de referencia del user, 2026-08-12).
+    const SEAT_OUTBOARD = 0.08 // butacas delanteras (m desde el centro del asiento)
+    const REAR_OUTBOARD = 0.06 // respaldos + almohadón traseros
     // GLTFLoader saca los puntos de los nombres: 'Cube.006' → 'Cube006'.
-    const TARGETS: { test: RegExp; axis: 'x' | 'y' | 'z'; centers: (bb: THREE.Box3) => number[] }[] = [
-      // Butacas delanteras: par centrado en el ancho (z local, mid del bbox).
-      { test: /^butaca_fina/, axis: 'z', centers: (bb) => pair((bb.min.z + bb.max.z) / 2) },
-      // Puertas: par vertical hacia el FRENTE de la puerta (mock 2). Mismo punto
-      // longitudinal del auto en ambas (world z≈+0.12, restada la translation del nodo).
-      { test: /^Cube006/, axis: 'z', centers: () => pair(0.12 - 0.1383) },
-      { test: /^Cube083/, axis: 'z', centers: () => pair(0.12 - 0.0125) },
-      // Traseros (mock 3): respaldos (par centrado en cada uno) + almohadón
-      // (una malla que cubre ambos lados → un par por lado, alineado con los
-      // respaldos: centros x ±0.28/−0.29 medidos del GLB).
-      { test: /^RESPALDO_editar001/, axis: 'x', centers: (bb) => pair((bb.min.x + bb.max.x) / 2) },
-      { test: /^RESPALDO_editar/, axis: 'x', centers: (bb) => pair((bb.min.x + bb.max.x) / 2) },
-      { test: /^Plane167/, axis: 'x', centers: () => [...pair(-0.29), ...pair(0.28)] },
+    const TARGETS: { test: RegExp; axis: 'x' | 'y' | 'z'; centers: (bb: THREE.Box3, mesh: THREE.Mesh) => number[] }[] = [
+      // Butacas delanteras: par corrido hacia afuera. Medido en vivo: en AMBAS
+      // butacas el +z local apunta a −x mundo → "afuera" = −z en la butaca
+      // derecha (world x>0) y +z en la izquierda. El lado se decide por la
+      // posición MUNDIAL del mesh (robusto ante renombres del export).
+      {
+        test: /^butaca_fina/, axis: 'z',
+        centers: (bb, mesh) => {
+          mesh.updateWorldMatrix(true, false)
+          const wx = new THREE.Vector3().setFromMatrixPosition(mesh.matrixWorld).x
+          const sign = wx > 0 ? -1 : 1
+          return pair((bb.min.z + bb.max.z) / 2 + sign * SEAT_OUTBOARD)
+        },
+      },
+      // Puertas: par vertical hacia el FRENTE de la puerta (mock 2; corrido
+      // +4cm más adelante a pedido, 2026-08-12). Mismo punto longitudinal del
+      // auto en ambas (world z≈+0.16, restada la translation del nodo).
+      { test: /^Cube006/, axis: 'z', centers: () => pair(0.16 - 0.1383) },
+      { test: /^Cube083/, axis: 'z', centers: () => pair(0.16 - 0.0125) },
+      // Traseros: respaldos (x mundo horneado: derecho mid 0.28 → afuera es
+      // +x; izquierdo mid −0.29 → afuera es −x) + almohadón (una malla que
+      // cubre ambos lados → un par por lado, alineado con los respaldos ya
+      // corridos).
+      { test: /^RESPALDO_editar001/, axis: 'x', centers: (bb) => pair((bb.min.x + bb.max.x) / 2 - REAR_OUTBOARD) },
+      { test: /^RESPALDO_editar/, axis: 'x', centers: (bb) => pair((bb.min.x + bb.max.x) / 2 + REAR_OUTBOARD) },
+      { test: /^Plane167/, axis: 'x', centers: () => [...pair(-0.29 - REAR_OUTBOARD), ...pair(0.28 + REAR_OUTBOARD)] },
     ]
 
     scene.traverse((o) => {
@@ -262,7 +280,7 @@ export function Model(props: any) {
       if (!tgt) return
       const geo = o.geometry as THREE.BufferGeometry
       if (!geo.boundingBox) geo.computeBoundingBox()
-      const centers = tgt.centers(geo.boundingBox as THREE.Box3)
+      const centers = tgt.centers(geo.boundingBox as THREE.Box3, o)
       const cvec = new THREE.Vector4(
         centers[0] ?? 1e9, centers[1] ?? 1e9, centers[2] ?? 1e9, centers[3] ?? 1e9
       )
