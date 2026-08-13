@@ -273,38 +273,47 @@ export function Model(props: any) {
       if (V.z < -0.6 || V.z > 0.34) return
       ;(V.x > 0 ? extraR : extraL).push(o)
     })
-    // FRANJA PORSCHE del zócalo: una sola malla recorre todo el lateral
-    // (guardabarros→puerta→cola, ambos lados). Partimos por TRIÁNGULO el
-    // tramo que cae sobre cada hoja (z −0.56..0.61) en mallas nuevas que
-    // comparten atributos/material; el índice del original queda solo con el
-    // resto (carrocería). Así el tramo de banda viaja con su puerta.
-    const band = scene.getObjectByName('PORSCHE_decal_tex') as THREE.Mesh | undefined
-    if (band && band.geometry.index) {
-      const bpos = band.geometry.attributes.position
-      const bidx = band.geometry.index.array
+    // MALLAS FUSIONADAS que cruzan la puerta: la franja PORSCHE del zócalo
+    // (una malla recorre todo el lateral), la tira de tornillos de los
+    // paneles (Plane163, 1.37m: ambos lados) y la fila de bulones (Bolt).
+    // Se parten por TRIÁNGULO: los del tramo de cada hoja van a mallas nuevas
+    // (comparten atributos/material) montadas al pivot; el índice del
+    // original queda con el resto (carrocería). minAbsX distingue la PIEL de
+    // puerta de las caras INTERNAS del zócalo del mismo cascarón: la banda
+    // exige |x|>0.7 (piel en 0.77–0.84; caras internas <0.7 → se quedan,
+    // moverlas era el "adhesivo bugueado" 2026-08-13).
+    const splitPorPuerta = (meshName: string, minAbsX: number) => {
+      const m = scene.getObjectByName(meshName) as THREE.Mesh | undefined
+      if (!m || !m.geometry || !m.geometry.index) return
+      const bpos = m.geometry.attributes.position
+      const bidx = m.geometry.index.array
       const iBody: number[] = [], iR: number[] = [], iL: number[] = []
       for (let i = 0; i < bidx.length; i += 3) {
         const a = bidx[i], b2 = bidx[i + 1], c2 = bidx[i + 2]
         const cx = (bpos.getX(a) + bpos.getX(b2) + bpos.getX(c2)) / 3
         const cz = (bpos.getZ(a) + bpos.getZ(b2) + bpos.getZ(c2)) / 3
-        const enPuerta = cz > -0.56 && cz < 0.61
-        if (enPuerta && cx > 0.5) iR.push(a, b2, c2)
-        else if (enPuerta && cx < -0.5) iL.push(a, b2, c2)
+        const enPuerta = cz > -0.56 && cz < 0.61 && Math.abs(cx) > minAbsX
+        if (enPuerta && cx > 0) iR.push(a, b2, c2)
+        else if (enPuerta) iL.push(a, b2, c2)
         else iBody.push(a, b2, c2)
       }
+      if (!iR.length && !iL.length) return
       const mkParte = (indices: number[], name: string) => {
         const g = new THREE.BufferGeometry()
-        for (const k of Object.keys(band.geometry.attributes)) g.setAttribute(k, band.geometry.attributes[k])
+        for (const k of Object.keys(m.geometry.attributes)) g.setAttribute(k, m.geometry.attributes[k])
         g.setIndex(indices)
-        const m = new THREE.Mesh(g, band.material)
-        m.name = name
-        scene.add(m)
-        return m
+        const parte = new THREE.Mesh(g, m.material)
+        parte.name = name
+        scene.add(parte)
+        return parte
       }
-      if (iR.length) extraR.push(mkParte(iR, 'PORSCHE_band_door_R'))
-      if (iL.length) extraL.push(mkParte(iL, 'PORSCHE_band_door_L'))
-      band.geometry.setIndex(iBody)
+      if (iR.length) extraR.push(mkParte(iR, meshName + '_door_R'))
+      if (iL.length) extraL.push(mkParte(iL, meshName + '_door_L'))
+      m.geometry.setIndex(iBody)
     }
+    splitPorPuerta('PORSCHE_decal_tex', 0.7) // banda: solo la piel exterior
+    splitPorPuerta('Plane163', 0.4) // tornillos de los paneles internos
+    splitPorPuerta('Bolt', 0.4) // fila de bulones de los paneles
 
     // COMPLETAR POR SIMETRÍA: si una pieza quedó capturada de un lado y su
     // gemela espejada (x→−x) no (nombres/marcos asimétricos: pasó con los
