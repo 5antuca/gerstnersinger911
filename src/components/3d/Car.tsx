@@ -273,6 +273,79 @@ export function Model(props: any) {
       if (V.z < -0.6 || V.z > 0.34) return
       ;(V.x > 0 ? extraR : extraL).push(o)
     })
+    // FRANJA PORSCHE del zócalo: una sola malla recorre todo el lateral
+    // (guardabarros→puerta→cola, ambos lados). Partimos por TRIÁNGULO el
+    // tramo que cae sobre cada hoja (z −0.56..0.61) en mallas nuevas que
+    // comparten atributos/material; el índice del original queda solo con el
+    // resto (carrocería). Así el tramo de banda viaja con su puerta.
+    const band = scene.getObjectByName('PORSCHE_decal_tex') as THREE.Mesh | undefined
+    if (band && band.geometry.index) {
+      const bpos = band.geometry.attributes.position
+      const bidx = band.geometry.index.array
+      const iBody: number[] = [], iR: number[] = [], iL: number[] = []
+      for (let i = 0; i < bidx.length; i += 3) {
+        const a = bidx[i], b2 = bidx[i + 1], c2 = bidx[i + 2]
+        const cx = (bpos.getX(a) + bpos.getX(b2) + bpos.getX(c2)) / 3
+        const cz = (bpos.getZ(a) + bpos.getZ(b2) + bpos.getZ(c2)) / 3
+        const enPuerta = cz > -0.56 && cz < 0.61
+        if (enPuerta && cx > 0.5) iR.push(a, b2, c2)
+        else if (enPuerta && cx < -0.5) iL.push(a, b2, c2)
+        else iBody.push(a, b2, c2)
+      }
+      const mkParte = (indices: number[], name: string) => {
+        const g = new THREE.BufferGeometry()
+        for (const k of Object.keys(band.geometry.attributes)) g.setAttribute(k, band.geometry.attributes[k])
+        g.setIndex(indices)
+        const m = new THREE.Mesh(g, band.material)
+        m.name = name
+        scene.add(m)
+        return m
+      }
+      if (iR.length) extraR.push(mkParte(iR, 'PORSCHE_band_door_R'))
+      if (iL.length) extraL.push(mkParte(iL, 'PORSCHE_band_door_L'))
+      band.geometry.setIndex(iBody)
+    }
+
+    // COMPLETAR POR SIMETRÍA: si una pieza quedó capturada de un lado y su
+    // gemela espejada (x→−x) no (nombres/marcos asimétricos: pasó con los
+    // Torus del panel derecho), se suma sola. Cierra los "tornillos
+    // levitando" en una sola puerta (reporte 2026-08-13).
+    const centerOf = (o: THREE.Object3D) => {
+      const g = (o as THREE.Mesh).geometry as THREE.BufferGeometry
+      if (!g.boundingBox) g.computeBoundingBox()
+      const b = g.boundingBox as THREE.Box3
+      const v = new THREE.Vector3((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2)
+      o.localToWorld(v)
+      return v
+    }
+    const explicitR = DOOR_R.map((n) => scene.getObjectByName(n)).filter(Boolean) as THREE.Object3D[]
+    const explicitL = DOOR_L.map((n) => scene.getObjectByName(n)).filter(Boolean) as THREE.Object3D[]
+    const attached = new Set<THREE.Object3D>([...explicitR, ...explicitL, ...extraR, ...extraL])
+    const candidatos: { o: THREE.Mesh; c: THREE.Vector3 }[] = []
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh) || !o.geometry || attached.has(o)) return
+      const g = o.geometry as THREE.BufferGeometry
+      if (!g.boundingBox) g.computeBoundingBox()
+      const b = g.boundingBox as THREE.Box3
+      if (b.max.x - b.min.x > 0.35 || b.max.y - b.min.y > 0.6 || b.max.z - b.min.z > 1.3) return
+      candidatos.push({ o, c: centerOf(o) })
+    })
+    const completar = (desde: THREE.Object3D[], hacia: THREE.Object3D[]) => {
+      for (const o of desde) {
+        if (!(o as THREE.Mesh).geometry) continue // grupos multi-parte: sin bbox propio
+        const c = centerOf(o)
+        for (const cand of candidatos) {
+          if (attached.has(cand.o)) continue
+          if (Math.abs(cand.c.x + c.x) < 0.04 && Math.abs(cand.c.y - c.y) < 0.04 && Math.abs(cand.c.z - c.z) < 0.04) {
+            hacia.push(cand.o)
+            attached.add(cand.o)
+          }
+        }
+      }
+    }
+    completar([...explicitL, ...extraL], extraR)
+    completar([...explicitR, ...extraR], extraL)
+
     const mk = (name: string, hx: number, hz: number, parts: string[], extras: THREE.Object3D[]) => {
       const g = new THREE.Group()
       g.name = name
