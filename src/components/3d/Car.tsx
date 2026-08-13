@@ -122,6 +122,7 @@ export function Model(props: any) {
   const interiorTint = useConfiguratorStore((s) => s.interiorTint)
   const interiorFinish = useConfiguratorStore((s) => s.interiorFinish)
   const stripeColor = useConfiguratorStore((s) => s.stripeColor)
+  const doorsOpen = useConfiguratorStore((s) => s.doorsOpen)
   const rimFinish = useConfiguratorStore((s) => s.rimFinish)
   const valleyFinish = useConfiguratorStore((s) => s.valleyFinish)
 
@@ -226,6 +227,115 @@ export function Model(props: any) {
     rig.position.y = -floorY
     rig.position.z = -center.z
   }, [scene])
+
+  // PUERTAS del Porsche (feature web, v2 "hasta el paso 2"): cada puerta son
+  // piezas SUELTAS del GLB agrupadas bajo un pivot en la bisagra real (borde
+  // delantero, eje vertical) con attach(); abrir = rotar el pivot. Viajan la
+  // chapa, panel trenzado, cuero, vidrio/marco/burlete, decal + el herraje
+  // interior (guanteras, parlantes, espejo, manijas, tornillos Torus).
+  // ⚠️ SIN cirugía de mallas fusionadas (splitPorPuerta se eliminó a pedido,
+  // 2026-08-13: partía la banda PORSCHE/tiras de tornillos y causaba glitches
+  // del adhesivo). Trade-off aceptado: la banda del zócalo y esas tiras
+  // quedan quietas al abrir. La solución de fondo es estructurar las puertas
+  // en Blender (bisagras + parenting + separar mallas) y exportar GLB nuevo.
+  useLayoutEffect(() => {
+    if (vehicle !== 'porsche') return
+    if (scene.getObjectByName('door_pivot_R')) return // ya armado (useLoader cachea la escena)
+    // Piezas grandes conocidas (el vidrio sobresale del corte en z; la regla
+    // de volumen lo excluiría — por eso van explícitas).
+    const DOOR_R = ['Plane171', 'Plane408', 'Cube006', 'Cube038', 'Plane001', 'Plane032', 'Plane142', 'PORSCHE_decal_door_R']
+    const DOOR_L = ['Plane002', 'Plane416', 'Cube083', 'Cube087', 'Plane003', 'Plane413', 'Plane414', 'PORSCHE_decal_door_L']
+    const explicit = new Set([...DOOR_R, ...DOOR_L])
+    const extraR: THREE.Object3D[] = []
+    const extraL: THREE.Object3D[] = []
+    // Herrajes por VOLUMEN, con el centro en MUNDO (localToWorld): en los
+    // meshes multi-parte (parlantes, espejo, correas) la posición vive en el
+    // nodo PADRE y un test local los deja afuera. Tope z ≤ 0.34: excluye el
+    // cluster del tablero (z ≥ 0.36) y las bisagras (z ≈ 0.57, fijas al
+    // cuerpo como en el auto real).
+    const V = new THREE.Vector3()
+    scene.updateMatrixWorld(true)
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh) || !o.geometry || explicit.has(o.name)) return
+      const geo = o.geometry as THREE.BufferGeometry
+      if (!geo.boundingBox) geo.computeBoundingBox()
+      const b = geo.boundingBox as THREE.Box3
+      const sx = b.max.x - b.min.x, sy = b.max.y - b.min.y, sz = b.max.z - b.min.z
+      if (sx > 0.35 || sy > 0.6 || sz > 1.3) return // grandes = carrocería
+      V.set((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2)
+      o.localToWorld(V)
+      const ax = Math.abs(V.x)
+      // ⚠️ SIN regla especial para los "Torus" a |x|<0.58: esos anillos son los
+      // OJALES DE LAS BUTACAS (y 0.35-0.55 = altura almohadón/bolster), no
+      // tornillos de puerta — arrastrarlos los hacía levitar (2026-08-13).
+      // Los tornillos reales del panel viven a |x|≥0.58 y entran por la regla
+      // general de abajo.
+      if (ax < 0.58 || ax > 0.9) return // 0.9: la manija derecha llega a |x|~0.87
+      if (V.y < 0.2 || V.y > 1.15) return
+      if (V.z < -0.6 || V.z > 0.34) return
+      ;(V.x > 0 ? extraR : extraL).push(o)
+    })
+    // COMPLETAR POR SIMETRÍA: si una pieza quedó capturada de un lado y su
+    // gemela espejada (x→−x) no (nombres/marcos asimétricos), se suma sola.
+    const centerOf = (o: THREE.Object3D) => {
+      const g = (o as THREE.Mesh).geometry as THREE.BufferGeometry
+      if (!g.boundingBox) g.computeBoundingBox()
+      const b = g.boundingBox as THREE.Box3
+      const v = new THREE.Vector3((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2)
+      o.localToWorld(v)
+      return v
+    }
+    const explicitR = DOOR_R.map((n) => scene.getObjectByName(n)).filter(Boolean) as THREE.Object3D[]
+    const explicitL = DOOR_L.map((n) => scene.getObjectByName(n)).filter(Boolean) as THREE.Object3D[]
+    const attached = new Set<THREE.Object3D>([...explicitR, ...explicitL, ...extraR, ...extraL])
+    const candidatos: { o: THREE.Mesh; c: THREE.Vector3 }[] = []
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh) || !o.geometry || attached.has(o)) return
+      const g = o.geometry as THREE.BufferGeometry
+      if (!g.boundingBox) g.computeBoundingBox()
+      const b = g.boundingBox as THREE.Box3
+      if (b.max.x - b.min.x > 0.35 || b.max.y - b.min.y > 0.6 || b.max.z - b.min.z > 1.3) return
+      candidatos.push({ o, c: centerOf(o) })
+    })
+    const completar = (desde: THREE.Object3D[], hacia: THREE.Object3D[]) => {
+      for (const o of desde) {
+        if (!(o as THREE.Mesh).geometry) continue // grupos multi-parte: sin bbox propio
+        const c = centerOf(o)
+        for (const cand of candidatos) {
+          if (attached.has(cand.o)) continue
+          if (Math.abs(cand.c.x + c.x) < 0.04 && Math.abs(cand.c.y - c.y) < 0.04 && Math.abs(cand.c.z - c.z) < 0.04) {
+            hacia.push(cand.o)
+            attached.add(cand.o)
+          }
+        }
+      }
+    }
+    completar([...explicitL, ...extraL], extraR)
+    completar([...explicitR, ...extraR], extraL)
+
+    const mk = (name: string, hx: number, hz: number, parts: string[], extras: THREE.Object3D[]) => {
+      const g = new THREE.Group()
+      g.name = name
+      g.position.set(hx, 0.6, hz)
+      scene.add(g)
+      for (const p of parts) {
+        const o = scene.getObjectByName(p)
+        if (o) g.attach(o)
+      }
+      for (const o of extras) g.attach(o)
+    }
+    mk('door_pivot_R', 0.68, 0.6, DOOR_R, extraR)
+    mk('door_pivot_L', -0.68, 0.6, DOOR_L, extraL)
+  }, [scene, vehicle])
+
+  // Abrir/cerrar: rotación pura del pivot (sin animación, instantáneo).
+  useLayoutEffect(() => {
+    const a = doorsOpen ? 0.9 : 0 // ~52°
+    const r = scene.getObjectByName('door_pivot_R')
+    const l = scene.getObjectByName('door_pivot_L')
+    if (r) r.rotation.y = -a // derecha: borde trasero gira hacia +x (afuera)
+    if (l) l.rotation.y = a
+  }, [doorsOpen, scene, vehicle])
 
   // FRANJAS del tejido (feature web). Un PAR de franjas finas verticales por
   // pieza (mock Canva del user, 2026-08-12): butacas delanteras + paneles de
