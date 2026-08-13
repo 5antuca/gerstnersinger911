@@ -251,24 +251,27 @@ export function Model(props: any) {
     const explicit = new Set([...DOOR_R, ...DOOR_L])
     const extraR: THREE.Object3D[] = []
     const extraL: THREE.Object3D[] = []
+    // ⚠️ El centro se calcula en MUNDO (localToWorld): en los meshes multi-parte
+    // (parlantes, espejo, correas) la posición vive en el nodo PADRE y el test
+    // local los dejaba afuera → quedaban flotando al abrir (bug 2026-08-13).
+    // Tope z ≤ 0.34: deja afuera el cluster del tablero (z ≥ 0.36) y las
+    // bisagras (z ≈ 0.57, que deben quedar fijas al cuerpo como en el auto real).
+    const V = new THREE.Vector3()
+    scene.updateMatrixWorld(true)
     scene.traverse((o) => {
       if (!(o instanceof THREE.Mesh) || !o.geometry || explicit.has(o.name)) return
       const geo = o.geometry as THREE.BufferGeometry
       if (!geo.boundingBox) geo.computeBoundingBox()
       const b = geo.boundingBox as THREE.Box3
-      const t = o.position
-      const minX = b.min.x + t.x, maxX = b.max.x + t.x
-      const minY = b.min.y + t.y, maxY = b.max.y + t.y
-      const minZ = b.min.z + t.z, maxZ = b.max.z + t.z
-      const sx = maxX - minX, sy = maxY - minY, sz = maxZ - minZ
+      const sx = b.max.x - b.min.x, sy = b.max.y - b.min.y, sz = b.max.z - b.min.z
       if (sx > 0.35 || sy > 0.6 || sz > 1.3) return // grandes = carrocería
-      // 0.86: la manija exterior (Cylinder061) llega a |x| 0.84.
-      const inBoxR = minX > 0.6 && maxX < 0.86
-      const inBoxL = maxX < -0.6 && minX > -0.86
-      if (!inBoxR && !inBoxL) return
-      if (minY < 0.2 || maxY > 1.15) return
-      if (minZ < -0.62 || maxZ > 0.58) return
-      ;(inBoxR ? extraR : extraL).push(o)
+      V.set((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2)
+      o.localToWorld(V)
+      const ax = Math.abs(V.x)
+      if (ax < 0.58 || ax > 0.9) return // 0.9: la manija derecha llega a |x|~0.87
+      if (V.y < 0.2 || V.y > 1.15) return
+      if (V.z < -0.6 || V.z > 0.34) return
+      ;(V.x > 0 ? extraR : extraL).push(o)
     })
     const mk = (name: string, hx: number, hz: number, parts: string[], extras: THREE.Object3D[]) => {
       const g = new THREE.Group()
