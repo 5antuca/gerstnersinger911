@@ -122,6 +122,7 @@ export function Model(props: any) {
   const interiorTint = useConfiguratorStore((s) => s.interiorTint)
   const interiorFinish = useConfiguratorStore((s) => s.interiorFinish)
   const stripeColor = useConfiguratorStore((s) => s.stripeColor)
+  const doorsOpen = useConfiguratorStore((s) => s.doorsOpen)
   const rimFinish = useConfiguratorStore((s) => s.rimFinish)
   const valleyFinish = useConfiguratorStore((s) => s.valleyFinish)
 
@@ -226,6 +227,72 @@ export function Model(props: any) {
     rig.position.y = -floorY
     rig.position.z = -center.z
   }, [scene])
+
+  // PUERTAS del Porsche (feature web): cada puerta son piezas SUELTAS del GLB
+  // (chapa int/ext, panel trenzado, cuero, vidrio, marco, burlete, decal).
+  // Se agrupan bajo un pivot en la bisagra real (borde delantero, eje
+  // vertical) con attach() — preserva transforms — y abrir = rotar el pivot.
+  // La manija y el espejo viven en mallas fusionadas del auto → no giran
+  // (limitación conocida; partirlas del GLB es un paso futuro si molesta).
+  useLayoutEffect(() => {
+    if (vehicle !== 'porsche') return
+    if (scene.getObjectByName('door_pivot_R')) return // ya armado (useLoader cachea la escena)
+    // Piezas grandes conocidas (chapa, panel, vidrio/marco/burlete — el vidrio
+    // sobresale del corte de puerta en z, la regla de volumen lo excluiría).
+    const DOOR_R = ['Plane171', 'Plane408', 'Cube006', 'Cube038', 'Plane001', 'Plane032', 'Plane142', 'PORSCHE_decal_door_R']
+    const DOOR_L = ['Plane002', 'Plane416', 'Cube083', 'Cube087', 'Plane003', 'Plane413', 'Plane414', 'PORSCHE_decal_door_L']
+    // Herrajes: manija (Cylinder061), espejo (Cylinder141), panel interno con
+    // parlantes (Cube086), moldura+burlete de cintura (Plane422/423),
+    // apoyabrazos, cerraduras, etc. En vez de listar nombres por lado, se
+    // seleccionan POR VOLUMEN: mesh chico cuyo bbox queda contenido en la caja
+    // de la puerta (|x| 0.60–0.82, y 0.2–1.15, z −0.62..0.58). Piezas que
+    // CRUZAN el corte trasero/delantero (pilar B, zócalo, molduras del
+    // guardabarros) quedan afuera por la contención en z.
+    const explicit = new Set([...DOOR_R, ...DOOR_L])
+    const extraR: THREE.Object3D[] = []
+    const extraL: THREE.Object3D[] = []
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh) || !o.geometry || explicit.has(o.name)) return
+      const geo = o.geometry as THREE.BufferGeometry
+      if (!geo.boundingBox) geo.computeBoundingBox()
+      const b = geo.boundingBox as THREE.Box3
+      const t = o.position
+      const minX = b.min.x + t.x, maxX = b.max.x + t.x
+      const minY = b.min.y + t.y, maxY = b.max.y + t.y
+      const minZ = b.min.z + t.z, maxZ = b.max.z + t.z
+      const sx = maxX - minX, sy = maxY - minY, sz = maxZ - minZ
+      if (sx > 0.35 || sy > 0.6 || sz > 1.3) return // grandes = carrocería
+      // 0.86: la manija exterior (Cylinder061) llega a |x| 0.84.
+      const inBoxR = minX > 0.6 && maxX < 0.86
+      const inBoxL = maxX < -0.6 && minX > -0.86
+      if (!inBoxR && !inBoxL) return
+      if (minY < 0.2 || maxY > 1.15) return
+      if (minZ < -0.62 || maxZ > 0.58) return
+      ;(inBoxR ? extraR : extraL).push(o)
+    })
+    const mk = (name: string, hx: number, hz: number, parts: string[], extras: THREE.Object3D[]) => {
+      const g = new THREE.Group()
+      g.name = name
+      g.position.set(hx, 0.6, hz)
+      scene.add(g)
+      for (const p of parts) {
+        const o = scene.getObjectByName(p)
+        if (o) g.attach(o)
+      }
+      for (const o of extras) g.attach(o)
+    }
+    mk('door_pivot_R', 0.68, 0.6, DOOR_R, extraR)
+    mk('door_pivot_L', -0.68, 0.6, DOOR_L, extraL)
+  }, [scene, vehicle])
+
+  // Abrir/cerrar: rotación pura del pivot (sin animación, instantáneo).
+  useLayoutEffect(() => {
+    const a = doorsOpen ? 0.9 : 0 // ~52°
+    const r = scene.getObjectByName('door_pivot_R')
+    const l = scene.getObjectByName('door_pivot_L')
+    if (r) r.rotation.y = -a // derecha: borde trasero gira hacia +x (afuera)
+    if (l) l.rotation.y = a
+  }, [doorsOpen, scene, vehicle])
 
   // FRANJAS del tejido (feature web). Un PAR de franjas finas verticales por
   // pieza (mock Canva del user, 2026-08-12): butacas delanteras + paneles de
