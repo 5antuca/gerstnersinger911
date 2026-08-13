@@ -268,6 +268,12 @@ export function Model(props: any) {
       V.set((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2)
       o.localToWorld(V)
       const ax = Math.abs(V.x)
+      // Tornillos "Torus" del borde del panel: viven más adentro (|x|~0.45-0.56)
+      // que el límite general — regla propia por nombre+tamaño para no arrastrar
+      // el freno de mano que comparte zona (reporte 2026-08-13).
+      const esTornilloTorus = /^Torus/.test(o.name) && sx < 0.06 && sy < 0.06 && sz < 0.06 &&
+        ax > 0.35 && ax < 0.85 && V.y > 0.2 && V.y < 0.7 && V.z > -0.6 && V.z < 0.5
+      if (esTornilloTorus) { (V.x > 0 ? extraR : extraL).push(o); return }
       if (ax < 0.58 || ax > 0.9) return // 0.9: la manija derecha llega a |x|~0.87
       if (V.y < 0.2 || V.y > 1.15) return
       if (V.z < -0.6 || V.z > 0.34) return
@@ -285,15 +291,21 @@ export function Model(props: any) {
     const splitPorPuerta = (meshName: string, minAbsX: number) => {
       const m = scene.getObjectByName(meshName) as THREE.Mesh | undefined
       if (!m || !m.geometry || !m.geometry.index) return
+      m.updateWorldMatrix(true, false)
       const bpos = m.geometry.attributes.position
       const bidx = m.geometry.index.array
+      const cW = new THREE.Vector3()
       const iBody: number[] = [], iR: number[] = [], iL: number[] = []
       for (let i = 0; i < bidx.length; i += 3) {
         const a = bidx[i], b2 = bidx[i + 1], c2 = bidx[i + 2]
-        const cx = (bpos.getX(a) + bpos.getX(b2) + bpos.getX(c2)) / 3
-        const cz = (bpos.getZ(a) + bpos.getZ(b2) + bpos.getZ(c2)) / 3
-        const enPuerta = cz > -0.56 && cz < 0.61 && Math.abs(cx) > minAbsX
-        if (enPuerta && cx > 0) iR.push(a, b2, c2)
+        // centroide en MUNDO (la fuente puede tener transform propio, ej. Bolt)
+        cW.set(
+          (bpos.getX(a) + bpos.getX(b2) + bpos.getX(c2)) / 3,
+          (bpos.getY(a) + bpos.getY(b2) + bpos.getY(c2)) / 3,
+          (bpos.getZ(a) + bpos.getZ(b2) + bpos.getZ(c2)) / 3
+        ).applyMatrix4(m.matrixWorld)
+        const enPuerta = cW.z > -0.56 && cW.z < 0.61 && Math.abs(cW.x) > minAbsX
+        if (enPuerta && cW.x > 0) iR.push(a, b2, c2)
         else if (enPuerta) iL.push(a, b2, c2)
         else iBody.push(a, b2, c2)
       }
@@ -304,6 +316,11 @@ export function Model(props: any) {
         g.setIndex(indices)
         const parte = new THREE.Mesh(g, m.material)
         parte.name = name
+        // heredar el transform de MUNDO de la fuente: sin esto, una fuente con
+        // transform propio (la fila Bolt) renderizaba dislocada ("barra
+        // levitando en el piso", 2026-08-13).
+        m.updateWorldMatrix(true, false)
+        parte.applyMatrix4(m.matrixWorld)
         scene.add(parte)
         return parte
       }
