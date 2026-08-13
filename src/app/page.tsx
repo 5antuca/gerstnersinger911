@@ -246,7 +246,7 @@ function useMediaQuery(query: string) {
 }
 
 export default function Home() {
-  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorFinish, setInteriorFinish, stripeColor, setStripeColor, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle, jaguarVariant, setJaguarVariant, doorsOpen, toggleDoors } = useConfiguratorStore()
+  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorFinish, setInteriorFinish, stripeColor, setStripeColor, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle, jaguarVariant, setJaguarVariant } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
   const [activeTab, setActiveTab] = useState<null | 'vehiculos' | 'pintura' | 'interior' | 'llantas' | 'luz' | 'cargar' | 'guardar'>(null)
@@ -466,27 +466,6 @@ export default function Home() {
             </svg>
           )}
         </button>
-        {/* Puertas del Porsche: abre/cierra (solo Porsche; el Jaguar no tiene). */}
-        {vehicle === 'porsche' && (
-          <button
-            onClick={toggleDoors}
-            className={`pointer-events-auto shrink-0 self-start ${compact ? 'w-8 h-8' : 'w-10 h-10'} mr-2 rounded-full backdrop-blur-2xl border flex items-center justify-center transition-all duration-300 ${
-              doorsOpen
-                ? 'bg-white text-black border-white'
-                : 'bg-[#0a0a0a]/75 text-white/70 border-white/10 hover:text-white hover:bg-white/10'
-            }`}
-            title={doorsOpen ? 'Cerrar puertas' : 'Abrir puertas'}
-            aria-label={doorsOpen ? 'Cerrar puertas' : 'Abrir puertas'}
-          >
-            {/* puerta entreabierta: marco + hoja en ángulo */}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 21V4h9" />
-              <path d="M13 4l7 3v14" />
-              <path d="M4 21h16" />
-              <circle cx="16.2" cy="12.5" r="0.6" fill="currentColor" stroke="none" />
-            </svg>
-          </button>
-        )}
         <div className={`pointer-events-auto bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 rounded-3xl ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} shadow-2xl max-w-[88vw] overflow-x-auto`}>
           {/* fila de tabs */}
           <div className="w-max mx-auto flex gap-1">
