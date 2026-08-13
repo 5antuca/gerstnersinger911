@@ -275,6 +275,52 @@ export function Model(props: any) {
       if (V.z < -0.6 || V.z > 0.34) return
       ;(V.x > 0 ? extraR : extraL).push(o)
     })
+    // TIRAS FUSIONADAS de tornillos de los paneles de puerta: Plane163 (~1.4m,
+    // tornillos de ambos paneles) y la fila Bolt (~1.3m) cruzan todo el auto en
+    // una sola malla → ningún filtro de tamaño puede moverlas enteras. Se
+    // parten por TRIÁNGULO (centroide en MUNDO, ventana z de la puerta) en
+    // mallas nuevas que comparten atributos/material y HEREDAN el transform de
+    // la fuente; el índice del original queda con el resto. ⚠️ La banda
+    // PORSCHE del zócalo NO se parte (su cascarón tiene caras internas y la
+    // cirugía la glitcheaba — trade-off aceptado: queda quieta al abrir).
+    const splitPorPuerta = (meshName: string, minAbsX: number) => {
+      const m = scene.getObjectByName(meshName) as THREE.Mesh | undefined
+      if (!m || !m.geometry || !m.geometry.index) return
+      m.updateWorldMatrix(true, false)
+      const bpos = m.geometry.attributes.position
+      const bidx = m.geometry.index.array
+      const cW = new THREE.Vector3()
+      const iBody: number[] = [], iR: number[] = [], iL: number[] = []
+      for (let i = 0; i < bidx.length; i += 3) {
+        const a = bidx[i], b2 = bidx[i + 1], c2 = bidx[i + 2]
+        cW.set(
+          (bpos.getX(a) + bpos.getX(b2) + bpos.getX(c2)) / 3,
+          (bpos.getY(a) + bpos.getY(b2) + bpos.getY(c2)) / 3,
+          (bpos.getZ(a) + bpos.getZ(b2) + bpos.getZ(c2)) / 3
+        ).applyMatrix4(m.matrixWorld)
+        const enPuerta = cW.z > -0.56 && cW.z < 0.61 && Math.abs(cW.x) > minAbsX
+        if (enPuerta && cW.x > 0) iR.push(a, b2, c2)
+        else if (enPuerta) iL.push(a, b2, c2)
+        else iBody.push(a, b2, c2)
+      }
+      if (!iR.length && !iL.length) return
+      const mkParte = (indices: number[], name: string) => {
+        const g = new THREE.BufferGeometry()
+        for (const k of Object.keys(m.geometry.attributes)) g.setAttribute(k, m.geometry.attributes[k])
+        g.setIndex(indices)
+        const parte = new THREE.Mesh(g, m.material)
+        parte.name = name
+        parte.applyMatrix4(m.matrixWorld) // heredar transform de la fuente
+        scene.add(parte)
+        return parte
+      }
+      if (iR.length) extraR.push(mkParte(iR, meshName + '_door_R'))
+      if (iL.length) extraL.push(mkParte(iL, meshName + '_door_L'))
+      m.geometry.setIndex(iBody)
+    }
+    splitPorPuerta('Plane163', 0.4) // tornillos de los paneles internos
+    splitPorPuerta('Bolt', 0.4) // fila de bulones de los paneles
+
     // COMPLETAR POR SIMETRÍA: si una pieza quedó capturada de un lado y su
     // gemela espejada (x→−x) no (nombres/marcos asimétricos), se suma sola.
     const centerOf = (o: THREE.Object3D) => {
