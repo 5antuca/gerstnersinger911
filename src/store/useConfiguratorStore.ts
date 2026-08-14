@@ -154,9 +154,12 @@ interface ConfiguratorState {
   // Variante de MODELO del Jaguar: 'config' (jaguar.glb configurable) | 'titi' (negro fijo).
   jaguarVariant: 'config' | 'titi';
   setJaguarVariant: (v: 'config' | 'titi') => void;
-  // Puertas del Porsche abiertas/cerradas (estado de vista, no se guarda en perfiles).
+  // Puertas del Porsche abiertas/cerradas. No se guarda en los perfiles, pero
+  // SÍ viaja en el link de cliente (?puertas=1) para poder mandar el auto
+  // abierto o cerrado tal como se está viendo.
   doorsOpen: boolean;
   toggleDoors: () => void;
+  setDoorsOpen: (v: boolean) => void;
 }
 
 export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
@@ -205,6 +208,7 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   setJaguarVariant: (jaguarVariant) => set({ jaguarVariant }),
   doorsOpen: false,
   toggleDoors: () => set((s) => ({ doorsOpen: !s.doorsOpen })),
+  setDoorsOpen: (doorsOpen) => set({ doorsOpen }),
 }))
 
 // Handle de DESARROLLO para inspeccionar/manejar el configurador desde la

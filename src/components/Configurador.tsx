@@ -261,7 +261,7 @@ const PERFIL_INICIAL_EDITOR = 'Franco Bitt'
   ni el camino para abrirlos (además de que no se renderizan).
 */
 export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
-  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorExact, setInteriorExact, interiorFinish, setInteriorFinish, stripeColor, setStripeColor, gaugeColor, setGaugeColor, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle, jaguarVariant, setJaguarVariant, doorsOpen, toggleDoors } = useConfiguratorStore()
+  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorExact, setInteriorExact, interiorFinish, setInteriorFinish, stripeColor, setStripeColor, gaugeColor, setGaugeColor, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle, jaguarVariant, setJaguarVariant, doorsOpen, toggleDoors, setDoorsOpen } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
   const [activeTab, setActiveTab] = useState<null | 'vehiculos' | 'pintura' | 'interior' | 'llantas' | 'luz' | 'cargar' | 'guardar'>(null)
@@ -283,9 +283,14 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
   // Feedback del botón Compartir (copia el link /ver al portapapeles).
   const [linkCopiado, setLinkCopiado] = useState(false)
   const copiarLinkCliente = async () => {
-    // El link lleva el preset que estás viendo → el cliente abre en ese mismo
-    // auto. Sin preset aplicado va el link pelado (abre en el default).
-    const url = `${window.location.origin}/ver${perfilActivo ? `?p=${encodeURIComponent(perfilActivo)}` : ''}`
+    // El link copia lo que estás viendo: el preset aplicado y si las puertas
+    // están abiertas. Sin nada de eso va el link pelado (abre en el default).
+    const params = new URLSearchParams()
+    if (perfilActivo) params.set('p', perfilActivo)
+    // Las puertas son del Porsche; con el Jaguar el estado no significa nada.
+    if (doorsOpen && vehicle === 'porsche') params.set('puertas', '1')
+    const qs = params.toString()
+    const url = `${window.location.origin}/ver${qs ? `?${qs}` : ''}`
     let copiado = false
     try {
       await navigator.clipboard.writeText(url)
@@ -408,6 +413,16 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
     perfilInicialAplicado.current = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cliente, perfiles])
+
+  /* Puertas del link (?puertas=1). Va en su propio efecto y NO espera a los
+     presets: un link puede traer puertas sin preset, y así el auto ya abre
+     abierto en vez de abrirse un rato después de cargar la lista. */
+  const puertasDeUrlAplicado = useRef(false)
+  useEffect(() => {
+    if (!cliente || puertasDeUrlAplicado.current) return
+    puertasDeUrlAplicado.current = true
+    if (new URLSearchParams(window.location.search).get('puertas') === '1') setDoorsOpen(true)
+  }, [cliente, setDoorsOpen])
   const borrarPerfil = (name: string) => {
     if (!window.confirm(`¿Borrar el perfil "${name}"? Queda una copia en la papelera de la nube.`)) return
     const borrado = perfiles.find((p) => p.name === name)
@@ -910,8 +925,8 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
                 linkCopiado
                   ? '¡Link copiado!'
                   : perfilActivo
-                    ? `Copiar link para clientes — abre en «${perfilActivo}»`
-                    : 'Copiar link para clientes (sin preset: abre en el default)'
+                    ? `Copiar link para clientes — abre en «${perfilActivo}»${doorsOpen && vehicle === 'porsche' ? ' con las puertas abiertas' : ''}`
+                    : `Copiar link para clientes${doorsOpen && vehicle === 'porsche' ? ' — con las puertas abiertas' : ' (sin preset: abre en el default)'}`
               }
               aria-label="Copiar link para clientes"
             >
