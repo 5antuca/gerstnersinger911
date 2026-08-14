@@ -393,7 +393,11 @@ export function Model(props: any) {
           ;(band.parent ?? scene).add(parte)
           return parte
         }
-        mkParte(iBody, 'PORSCHE_band_body')
+        // TODAS las partes a una sola cara: con el cuerpo en DoubleSide su
+        // reverso seguía asomando dentro del habitáculo con las puertas
+        // abiertas ("sigue estando", 2026-08-14). El original (estado
+        // cerrado) mantiene DoubleSide y no se toca.
+        mkParte(iBody, 'PORSCHE_band_body', true)
         if (iR.length) extraR.push(mkParte(iR, 'PORSCHE_band_door_R', true))
         if (iL.length) extraL.push(mkParte(iL, 'PORSCHE_band_door_L', true))
         // ⚠️ el índice de `band` (la original) queda INTACTO
