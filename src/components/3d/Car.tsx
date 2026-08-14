@@ -279,13 +279,14 @@ export function Model(props: any) {
       ;(V.x > 0 ? extraR : extraL).push(o)
     })
     // BANDA PORSCHE del zócalo (PORSCHE_decal_tex): una malla recorre todo el
-    // lateral → su tramo sobre cada hoja debe VIAJAR con la puerta (pedido
-    // 2026-08-14: "el del lado del acompañante sigue flotando"). Se parte por
-    // TRIÁNGULO con centroide en MUNDO; |x|>0.7 toma SOLO la piel exterior
-    // (0.77–0.84) y deja las caras internas del cascarón en la carrocería
-    // (moverlas era el "adhesivo bugueado"). Las partes heredan el transform.
-    // ⚠️ Las tiras Plane163/Bolt NO se parten: el user marcó con ?marcar=1
-    // que no deben moverse.
+    // lateral. Estrategia SWAP (2026-08-14, tras 3 intentos de cirugía que
+    // rompían el estado cerrado): la banda ORIGINAL no se toca NUNCA →
+    // cerrada se ve pixel-perfect por construcción. Se pre-arman 3 partes
+    // (cuerpo + hoja izq + hoja der, ocultas) y al ABRIR se oculta la
+    // original y se muestran las partes (las de hoja viajan en los pivots).
+    // Cualquier imperfección del corte solo puede existir con puertas
+    // abiertas. |x|>0.7 = piel exterior; el pliegue interno (0.45–0.7) no va
+    // a ninguna parte (expuesto flotaba, movido atravesaba la carrocería).
     const band = scene.getObjectByName('PORSCHE_decal_tex') as THREE.Mesh | undefined
     if (band && band.geometry && band.geometry.index) {
       band.updateWorldMatrix(true, false)
@@ -303,13 +304,10 @@ export function Model(props: any) {
         const enPuertaZ = cW.z > -0.56 && cW.z < 0.61
         const axx = Math.abs(cW.x)
         if (enPuertaZ && axx > 0.7) {
-          // piel exterior de la hoja → viaja con su puerta
           if (cW.x > 0) iR.push(a, b2, c2)
           else iL.push(a, b2, c2)
         } else if (enPuertaZ && axx > 0.45) {
-          // pliegue INTERNO del cascarón bajo la puerta: ni viaja (atraviesa la
-          // carrocería al girar) ni queda (se ve flotando expuesto al abrir) →
-          // se ELIMINA del render ("los adhesivos siguen bugueados", 2026-08-14)
+          // pliegue interno: fuera del set abierto
         } else {
           iBody.push(a, b2, c2)
         }
@@ -322,12 +320,14 @@ export function Model(props: any) {
           const parte = new THREE.Mesh(g, band.material)
           parte.name = name
           parte.applyMatrix4(band.matrixWorld) // heredar transform de la fuente
+          parte.visible = false // solo se muestran con puertas ABIERTAS
           scene.add(parte)
           return parte
         }
+        mkParte(iBody, 'PORSCHE_band_body')
         if (iR.length) extraR.push(mkParte(iR, 'PORSCHE_band_door_R'))
         if (iL.length) extraL.push(mkParte(iL, 'PORSCHE_band_door_L'))
-        band.geometry.setIndex(iBody)
+        // ⚠️ el índice de `band` (la original) queda INTACTO
       }
     }
 
@@ -384,13 +384,23 @@ export function Model(props: any) {
     mk('door_pivot_L', -0.68, 0.6, DOOR_L, extraL)
   }, [scene, vehicle])
 
-  // Abrir/cerrar: rotación pura del pivot (sin animación, instantáneo).
+  // Abrir/cerrar: rotación pura del pivot (sin animación, instantáneo) + SWAP
+  // de la banda: cerrada muestra la ORIGINAL intacta (pixel-perfect); abierta
+  // la oculta y muestra las 3 partes (las de hoja viajan en los pivots).
   useLayoutEffect(() => {
     const a = doorsOpen ? 0.9 : 0 // ~52°
     const r = scene.getObjectByName('door_pivot_R')
     const l = scene.getObjectByName('door_pivot_L')
     if (r) r.rotation.y = -a // derecha: borde trasero gira hacia +x (afuera)
     if (l) l.rotation.y = a
+    const band = scene.getObjectByName('PORSCHE_decal_tex')
+    const partes = ['PORSCHE_band_body', 'PORSCHE_band_door_R', 'PORSCHE_band_door_L']
+      .map((n) => scene.getObjectByName(n))
+      .filter(Boolean) as THREE.Object3D[]
+    if (band && partes.length) {
+      band.visible = !doorsOpen
+      for (const p of partes) p.visible = doorsOpen
+    }
   }, [doorsOpen, scene, vehicle])
 
   // MODO MARCADOR (?marcar=1 en la URL): doble clic sobre una pieza → se pinta
