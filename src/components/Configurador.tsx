@@ -273,10 +273,15 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
   const [nombrePerfil, setNombrePerfil] = useState('')
   // 'cloud' = sincronizado con la nube; 'local' = solo este navegador.
   const [syncEstado, setSyncEstado] = useState<'cloud' | 'local'>('local')
+  // Último preset aplicado. Sirve para dos cosas: marcar cuál está puesto y
+  // que el link para clientes abra en ESE preset.
+  const [perfilActivo, setPerfilActivo] = useState<string | null>(null)
   // Feedback del botón Compartir (copia el link /ver al portapapeles).
   const [linkCopiado, setLinkCopiado] = useState(false)
   const copiarLinkCliente = async () => {
-    const url = `${window.location.origin}/ver`
+    // El link lleva el preset que estás viendo → el cliente abre en ese mismo
+    // auto. Sin preset aplicado va el link pelado (abre en el default).
+    const url = `${window.location.origin}/ver${perfilActivo ? `?p=${encodeURIComponent(perfilActivo)}` : ''}`
     let copiado = false
     try {
       await navigator.clipboard.writeText(url)
@@ -329,6 +334,9 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
         persistirLocal(merged)
         setSyncEstado('cloud')
         // subir lo que la nube no tiene o tiene más viejo (p.ej. guardado offline)
+        // ⚠️ NUNCA desde el visor de cliente: si no, el localStorage viejo del
+        // navegador de un cliente puede reescribir los presets de la nube.
+        if (cliente) return
         const remotoAt = new Map(remotos.map((p) => [p.name, p.updatedAt ?? 0]))
         for (const p of merged) {
           if ((remotoAt.get(p.name) ?? -1) < (p.updatedAt ?? 0)) {
@@ -337,7 +345,7 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
         }
       } catch { /* sin red: queda la copia local */ }
     })()
-  }, [])
+  }, [cliente])
   const guardarPerfil = () => {
     const name = nombrePerfil.trim()
     if (!name) return
@@ -365,7 +373,24 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
     // guard: perfiles viejos sin iluminación guardada caerían en undefined y romperían
     // el Environment de la escena → default a 'city' (re-guardá el perfil para fijar la luz).
     setEnvironment((p.cfg.environment as Parameters<typeof setEnvironment>[0]) ?? 'city')
+    setPerfilActivo(p.name)
   }
+  /* El link para clientes puede traer `?p=<preset>`: el visor abre en ESE auto.
+     Se lee de window.location (no useSearchParams) para no forzar un Suspense
+     ni sacar a /ver del prerender. Espera a que lleguen los presets: primero
+     entran los de localStorage y después los de la nube, así que mientras no
+     encuentre el nombre se vuelve a intentar en cada actualización. */
+  const perfilDeUrlAplicado = useRef(false)
+  useEffect(() => {
+    if (!cliente || perfilDeUrlAplicado.current || perfiles.length === 0) return
+    const buscado = new URLSearchParams(window.location.search).get('p')
+    if (!buscado) { perfilDeUrlAplicado.current = true; return }
+    const p = perfiles.find((x) => x.name === buscado)
+    if (!p) return // puede llegar en la tanda de la nube
+    cargarPerfil(p)
+    perfilDeUrlAplicado.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cliente, perfiles])
   const borrarPerfil = (name: string) => {
     if (!window.confirm(`¿Borrar el perfil "${name}"? Queda una copia en la papelera de la nube.`)) return
     const borrado = perfiles.find((p) => p.name === name)
@@ -751,10 +776,15 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
                 </span>
               )}
               {perfilesVisibles.map((p) => (
-                <span key={p.name} className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full pl-1.5 pr-2 py-1">
+                <span
+                  key={p.name}
+                  className={`flex items-center gap-1 rounded-full pl-1.5 pr-2 py-1 border transition-all duration-300 ${
+                    perfilActivo === p.name ? 'bg-white/15 border-white/50' : 'bg-white/5 border-white/10'
+                  }`}
+                >
                   <span className="w-4 h-4 rounded-full border border-black/30" style={{ backgroundColor: p.cfg.paintColor }} />
                   <span className="w-4 h-4 rounded-full border border-black/30 -ml-2" style={{ backgroundColor: p.cfg.decalColor }} />
-                  <button onClick={() => cargarPerfil(p)} className="text-xs font-medium text-white/80 hover:text-white px-1.5">
+                  <button onClick={() => cargarPerfil(p)} className={`text-xs font-medium px-1.5 transition-colors ${perfilActivo === p.name ? 'text-white' : 'text-white/80 hover:text-white'}`}>
                     {p.name}
                   </button>
                   {/* borrar: solo en el editor */}
@@ -805,7 +835,13 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
               className={`pointer-events-auto shrink-0 self-start ${compact ? 'w-8 h-8' : 'w-10 h-10'} ml-2 rounded-full backdrop-blur-2xl border flex items-center justify-center transition-all duration-300 ${
                 linkCopiado ? 'bg-white text-black border-white' : 'bg-[#0a0a0a]/75 text-white/70 border-white/10 hover:text-white hover:bg-white/10'
               }`}
-              title={linkCopiado ? '¡Link copiado!' : 'Copiar link para clientes'}
+              title={
+                linkCopiado
+                  ? '¡Link copiado!'
+                  : perfilActivo
+                    ? `Copiar link para clientes — abre en «${perfilActivo}»`
+                    : 'Copiar link para clientes (sin preset: abre en el default)'
+              }
               aria-label="Copiar link para clientes"
             >
               {linkCopiado ? (
