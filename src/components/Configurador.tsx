@@ -841,21 +841,27 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
                 </span>
               )}
               {perfilesVisibles.map((p) => (
+                /* grow + basis igual: los chips ESTIRAN para llenar la fila, así
+                   no quedan bordes dentados ni huecos raros al abrir el menú.
+                   Medido antes del cambio: las filas arrancaban con sangrías
+                   distintas (31px vs 19px) y cada chip medía distinto (90–113),
+                   así que las columnas no alineaban. El tope evita que una
+                   última fila de pocos se estire a lo ancho de todo. */
                 <span
                   key={p.name}
-                  className={`flex items-center gap-1 rounded-full pl-1.5 pr-2 py-1 border transition-all duration-300 ${
+                  className={`flex items-center gap-1 rounded-full pl-1.5 pr-2 py-1 border transition-all duration-300 grow basis-[104px] max-w-[168px] ${
                     perfilActivo === p.name ? 'bg-white/15 border-white/50' : 'bg-white/5 border-white/10'
                   }`}
                 >
-                  <span className="w-4 h-4 rounded-full border border-black/30" style={{ backgroundColor: p.cfg.paintColor }} />
-                  <span className="w-4 h-4 rounded-full border border-black/30 -ml-2" style={{ backgroundColor: p.cfg.decalColor }} />
-                  <button onClick={() => cargarPerfil(p)} className={`text-xs font-medium px-1.5 transition-colors ${perfilActivo === p.name ? 'text-white' : 'text-white/80 hover:text-white'}`}>
+                  <span className="w-4 h-4 rounded-full border border-black/30 shrink-0" style={{ backgroundColor: p.cfg.paintColor }} />
+                  <span className="w-4 h-4 rounded-full border border-black/30 -ml-2 shrink-0" style={{ backgroundColor: p.cfg.decalColor }} />
+                  <button onClick={() => cargarPerfil(p)} className={`text-xs font-medium px-1.5 min-w-0 flex-1 text-left truncate transition-colors ${perfilActivo === p.name ? 'text-white' : 'text-white/80 hover:text-white'}`} title={p.name}>
                     {p.name}
                   </button>
                   {/* borrar: solo en el editor */}
                   {!cliente && (
                     <button onClick={() => borrarPerfil(p.name)} aria-label={`Borrar ${p.name}`}
-                      className="text-white/30 hover:text-white text-xs px-0.5">×</button>
+                      className="text-white/30 hover:text-white text-xs px-0.5 shrink-0">×</button>
                   )}
                 </span>
               ))}
