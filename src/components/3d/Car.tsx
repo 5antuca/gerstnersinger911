@@ -302,11 +302,12 @@ export function Model(props: any) {
       // leerla como Mesh devolvía null y el lado izquierdo caía a un rango
       // hardcodeado, por eso seguía sobresaliendo (2026-08-14).
       const Y0 = 0.18, Y1 = 0.48, NB = 30 // bins de 1cm en la franja de la banda
-      const perfilDe = (nm: string): { min: Float64Array; max: Float64Array } | null => {
+      const perfilDe = (nm: string): { min: Float64Array; max: Float64Array; cubierto: Uint8Array } | null => {
         const root = scene.getObjectByName(nm)
         if (!root) return null
         const min = new Float64Array(NB).fill(Infinity)
         const max = new Float64Array(NB).fill(-Infinity)
+        const cubierto = new Uint8Array(NB) // 1 = la chapa EXISTE a esa altura
         const v = new THREE.Vector3()
         let hits = 0
         root.traverse((o) => {
@@ -319,6 +320,7 @@ export function Model(props: any) {
             if (b < 0 || b >= NB) continue
             if (v.z < min[b]) min[b] = v.z
             if (v.z > max[b]) max[b] = v.z
+            cubierto[b] = 1
             hits++
           }
         })
@@ -330,7 +332,10 @@ export function Model(props: any) {
             if (i + d < NB && min[i + d] !== Infinity) { min[i] = min[i + d]; max[i] = max[i + d]; break }
           }
         }
-        return { min, max }
+        return { min, max, cubierto } // ⚠️ `cubierto` NO se rellena: marca las
+        // alturas donde la chapa existe de verdad. El tramo del zócalo (debajo
+        // del filo inferior de la puerta) cae en bins NO cubiertos y por eso
+        // se conserva en el cuerpo — descartarlo "cortaba" la banda (2026-08-14).
       }
       // Sin margen: el corte cae EXACTO en el filo de la chapa.
       const MARGEN = 0
@@ -346,6 +351,11 @@ export function Model(props: any) {
       // es más angosta en algunas alturas y dejaba 5294 triángulos de banda en
       // el hueco de la puerta — el "rastro del adhesivo" que quedaba adentro
       // con la puerta abierta (2026-08-14).
+      const cubreAltura = (perf: { cubierto: Uint8Array } | null, y: number): boolean => {
+        if (!perf) return true
+        const b = Math.min(NB - 1, Math.max(0, Math.floor(((y - Y0) / (Y1 - Y0)) * NB)))
+        return perf.cubierto[b] === 1
+      }
       const total = (perf: { min: Float64Array; max: Float64Array } | null): [number, number] => {
         if (!perf) return [-0.52, 0.64]
         let lo = Infinity, hi = -Infinity
@@ -382,7 +392,7 @@ export function Model(props: any) {
         if (enPuertaZ && axx > 0.75) {
           if (cW.x > 0) iR.push(a, b2, c2)
           else iL.push(a, b2, c2)
-        } else if (enHuecoPuerta && axx > 0.45) {
+        } else if (enHuecoPuerta && axx > 0.45 && cubreAltura(cW.x > 0 ? perfR : perfL, cW.y)) {
           // Todo lo demás en el hueco de la puerta se DESCARTA: el pliegue
           // interno y los restos que la ventana curva no se llevó. Así, con la
           // hoja abierta, el adhesivo queda SOLO en la puerta y el hueco no
