@@ -129,6 +129,10 @@ interface ConfiguratorState {
   setValleyFinish: (v: number) => void;
   interiorTint: string;
   setInteriorTint: (tint: string) => void;
+  // Color EXACTO del interior elegido en la rueda. null = usar interiorTint
+  // (multiplicador histórico). Ver el comentario de INTERIOR_REF en Car.tsx.
+  interiorExact: string | null;
+  setInteriorExact: (hex: string | null) => void;
   // Color de las franjas de las butacas ('off' = sin franjas).
   stripeColor: string;
   setStripeColor: (color: string) => void;
@@ -175,6 +179,10 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   // Blanco = texturas camel originales del GLB sin alterar.
   interiorTint: '#ffffff',
   setInteriorTint: (tint) => set({ interiorTint: tint }),
+  // null = el interior se resuelve por interiorTint (comportamiento histórico).
+  // Los presets viejos NO traen este campo → siguen viéndose igual que siempre.
+  interiorExact: null,
+  setInteriorExact: (hex) => set({ interiorExact: hex }),
   // 'off' = butacas sin franjas (default). Elegir un color las prende.
   stripeColor: 'off',
   setStripeColor: (color) => set({ stripeColor: color }),
@@ -198,3 +206,9 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   doorsOpen: false,
   toggleDoors: () => set((s) => ({ doorsOpen: !s.doorsOpen })),
 }))
+
+// Handle de DESARROLLO para inspeccionar/manejar el configurador desde la
+// consola (igual que window.__carScene en Car.tsx). No llega a producción.
+if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+  ;(window as unknown as { __cfgStore?: unknown }).__cfgStore = useConfiguratorStore
+}

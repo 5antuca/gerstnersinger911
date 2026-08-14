@@ -261,7 +261,7 @@ const PERFIL_INICIAL_EDITOR = 'Franco Bitt'
   ni el camino para abrirlos (además de que no se renderizan).
 */
 export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
-  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorFinish, setInteriorFinish, stripeColor, setStripeColor, gaugeColor, setGaugeColor, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle, jaguarVariant, setJaguarVariant, doorsOpen, toggleDoors } = useConfiguratorStore()
+  const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorExact, setInteriorExact, interiorFinish, setInteriorFinish, stripeColor, setStripeColor, gaugeColor, setGaugeColor, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle, jaguarVariant, setJaguarVariant, doorsOpen, toggleDoors } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
   const [activeTab, setActiveTab] = useState<null | 'vehiculos' | 'pintura' | 'interior' | 'llantas' | 'luz' | 'cargar' | 'guardar'>(null)
@@ -272,7 +272,7 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
   // robusta es /api/perfiles (nube compartida entre dispositivos). Al montar
   // se mergean por nombre (gana el updatedAt más nuevo y los tombstones de la
   // nube tapan lo borrado) y se sube lo que la nube no tenga.
-  type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorFinish?: number; stripeColor?: string; gaugeColor?: string; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string; vehicle?: string; jaguarVariant?: string }; updatedAt?: number }
+  type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorExact?: string | null; interiorFinish?: number; stripeColor?: string; gaugeColor?: string; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string; vehicle?: string; jaguarVariant?: string }; updatedAt?: number }
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [nombrePerfil, setNombrePerfil] = useState('')
   // 'cloud' = sincronizado con la nube; 'local' = solo este navegador.
@@ -353,7 +353,7 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
   const guardarPerfil = () => {
     const name = nombrePerfil.trim()
     if (!name) return
-    const cfg = { paintColor, paintFinish, decalColor, decalFinish, interiorTint, interiorFinish, stripeColor, gaugeColor, rimColor, rimFinish, valleyColor, valleyFinish, environment, vehicle, jaguarVariant }
+    const cfg = { paintColor, paintFinish, decalColor, decalFinish, interiorTint, interiorExact, interiorFinish, stripeColor, gaugeColor, rimColor, rimFinish, valleyColor, valleyFinish, environment, vehicle, jaguarVariant }
     const perfil: Perfil = { name, cfg, updatedAt: Date.now() }
     const nuevos = [...perfiles.filter((p) => p.name !== name), perfil]
     setPerfiles(nuevos)
@@ -373,7 +373,10 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
     setJaguarVariant((p.cfg.jaguarVariant as 'config' | 'titi') ?? 'config')
     setPaintColor(p.cfg.paintColor); setPaintFinish(p.cfg.paintFinish ?? 0.85)
     setDecalColor(p.cfg.decalColor); setDecalFinish(p.cfg.decalFinish ?? 0)
-    setInteriorTint(p.cfg.interiorTint); setInteriorFinish(p.cfg.interiorFinish ?? 0)
+    setInteriorTint(p.cfg.interiorTint)
+    // Presets viejos no traen interiorExact -> null -> camino historico intacto.
+    setInteriorExact((p.cfg.interiorExact as string | null | undefined) ?? null)
+    setInteriorFinish(p.cfg.interiorFinish ?? 0)
     setStripeColor(p.cfg.stripeColor ?? 'off')
     setGaugeColor(p.cfg.gaugeColor ?? 'auto')
     setRimColor(p.cfg.rimColor); setRimFinish(p.cfg.rimFinish ?? 1)
@@ -434,7 +437,7 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
       setPaintColor('#E7E4DB'); setPaintFinish(0.5)
       setDecalColor('#273f99'); setDecalFinish(0.5)
       setRimColor('#dadada'); setRimFinish(1)
-      setInteriorTint('#980a00'); setInteriorFinish(0)
+      setInteriorTint('#980a00'); setInteriorExact(null); setInteriorFinish(0)
     }
   }
 
@@ -711,7 +714,9 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
                   {PRESET_INTERIORS.map((interior) => (
                     <button
                       key={interior.id}
-                      onClick={() => { setInteriorColor(interior); setInteriorTint(interior.tint) }}
+                      // Los 4 acabados siguen por el camino histórico
+                      // (multiplicador): se ven EXACTAMENTE igual que siempre.
+                      onClick={() => { setInteriorColor(interior); setInteriorTint(interior.tint); setInteriorExact(null) }}
                       className={`${compact ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'} rounded-full font-medium flex items-center gap-2 transition-all duration-300 whitespace-nowrap ${
                         interiorColor.id === interior.id ? 'bg-white text-black' : 'text-white/70 hover:text-white hover:bg-white/10'
                       }`}
@@ -725,7 +730,10 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
               <div className={dividerCls} />
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Tono del cuero</span>
-                <ColorPickerRGB hex={interiorTint} finish={interiorFinish} onHex={setInteriorTint} onFinish={setInteriorFinish} size={wheelSize} />
+                {/* La rueda aplica el color EXACTO (setInteriorExact). El
+                    multiplicador viejo queda solo para los presets ya
+                    guardados y los 4 acabados de arriba. */}
+                <ColorPickerRGB hex={interiorExact ?? interiorTint} finish={interiorFinish} onHex={setInteriorExact} onFinish={setInteriorFinish} size={wheelSize} />
               </div>
               <div className={dividerCls} />
               <div className="flex items-center gap-3">

@@ -69,9 +69,50 @@ const DECAL_DEFAULT = '#c5b47a'
 // El piso lo definen las ruedas de calle (mediana de los fondos de Tire_base).
 const FLOOR_MATS = ['Tire base', 'Tire_base']
 
+/*
+  COLOR EXACTO DEL INTERIOR (`interiorExact`).
+
+  El camino histórico (`interiorTint`) es un MULTIPLICADOR sobre el camel
+  horneado del GLB: elegir celeste daba verde, porque celeste × camel = verde.
+  Se conserva intacto para no mover ni un preset ya guardado — los presets
+  viejos no traen `interiorExact` y siguen por ahí.
+
+  Con `interiorExact` el color se aplica tal cual:
+   - materiales SIN textura → el color va directo.
+   - trenzado (CON textura camel) → el material va en blanco y el shader usa la
+     textura como luminancia, poniendo el tono desde el color elegido. Dividir
+     por el promedio del mapa canal por canal no servía: el azul del camel es
+     0.054 lineal y compensarlo pedía 5×, o sea saturaba.
+*/
+function mediaLumDeMapa(m: THREE.MeshStandardMaterial): number {
+  if (typeof m.userData.__mapMeanLum === 'number') return m.userData.__mapMeanLum as number
+  let lum = 1
+  const img = m.map?.image as CanvasImageSource | undefined
+  if (img) {
+    try {
+      const N = 64
+      const cv = document.createElement('canvas')
+      cv.width = N
+      cv.height = N
+      const ctx = cv.getContext('2d', { willReadFrequently: true })
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, N, N)
+        const d = ctx.getImageData(0, 0, N, N).data
+        let r = 0, g = 0, b = 0
+        for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2] }
+        const n = d.length / 4
+        // El promedio se mide sobre píxeles sRGB; el shader trabaja en lineal.
+        const c = new THREE.Color().setRGB(r / n / 255, g / n / 255, b / n / 255).convertSRGBToLinear()
+        lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+      }
+    } catch { /* textura de otro origen (canvas tainted): queda en 1 */ }
+  }
+  m.userData.__mapMeanLum = lum
+  return lum
+}
+
 // Familia de interior tintable: cuero camel + cuero trenzado (weave) + trims
-// caramelo. El tinte es un MULTIPLICADOR sobre el color/textura original
-// (blanco = look original del .blend). Excluye los cueros negros (BK).
+// caramelo. Excluye los cueros negros (BK) y la alfombra.
 function esInteriorTintable(nombre: string): boolean {
   const n = nombre.toLowerCase()
   if (n.includes('bk')) return false
@@ -130,6 +171,10 @@ export function Model(props: any) {
   // Estado de las franjas de butaca, leído por el onBeforeCompile al compilar.
   const stripeColorRef = useRef(new THREE.Color('#1e3f78'))
   const stripeOnRef = useRef(0)
+  // Ídem para el color EXACTO del interior sobre el trenzado.
+  const interiorExact = useConfiguratorStore((s) => s.interiorExact)
+  const exactOnRef = useRef(0)
+  const exactColorRef = useRef(new THREE.Color('#ffffff'))
 
   // Pintura dinámica: physical con clearcoat (mismo look que la laca del .blend).
   const paintMaterial = useMemo(() => {
@@ -605,13 +650,22 @@ export function Model(props: any) {
       { test: /^Plane167/, axis: 'x', centers: () => [...pair(-0.29 - REAR_OUTBOARD), ...pair(0.28 + REAR_OUTBOARD)] },
     ]
 
+    const esWeave = (m: THREE.Material | null | undefined) =>
+      !!m && /^pbr_basket_weave/i.test(m.name || '')
+    const tieneWeave = (o: THREE.Mesh) =>
+      Array.isArray(o.material) ? o.material.some(esWeave) : esWeave(o.material)
+
     scene.traverse((o) => {
       if (!(o instanceof THREE.Mesh)) return
       const tgt = TARGETS.find((t) => t.test.test(o.name))
-      if (!tgt) return
+      // Las mallas de trenzado SIN franjas también pasan por el clon: el mismo
+      // shader resuelve el color exacto del interior (ver uExactOn). Sin esto
+      // el dash y los demás paneles se quedaban con el material sin shader y
+      // no acompañaban el color elegido. Centros en 1e9 = franjas apagadas.
+      if (!tgt && !tieneWeave(o)) return
       const geo = o.geometry as THREE.BufferGeometry
       if (!geo.boundingBox) geo.computeBoundingBox()
-      const centers = tgt.centers(geo.boundingBox as THREE.Box3, o)
+      const centers = tgt ? tgt.centers(geo.boundingBox as THREE.Box3, o) : []
       const cvec = new THREE.Vector4(
         centers[0] ?? 1e9, centers[1] ?? 1e9, centers[2] ?? 1e9, centers[3] ?? 1e9
       )
@@ -628,17 +682,37 @@ export function Model(props: any) {
           shader.uniforms.uStripeOn = { value: stripeOnRef.current }
           shader.uniforms.uStripeCenters = { value: cvec }
           shader.uniforms.uStripeHW = { value: HW }
+          // Color EXACTO del interior sobre el trenzado. La textura del tejido
+          // es camel horneado y casi no tiene azul (0.054 lineal), así que
+          // multiplicar por el color elegido NUNCA puede dar un celeste: por
+          // eso elegir celeste se veía verde. Acá se usa la textura como
+          // LUMINANCIA (el relieve del tejido) y el tono lo pone el color
+          // elegido → el promedio da EXACTAMENTE ese color.
+          shader.uniforms.uExactOn = { value: exactOnRef.current }
+          shader.uniforms.uExactColor = { value: exactColorRef.current.clone() }
+          // Del MATERIAL, no de un ref: en la primera compilación el ref todavía
+          // vale 1 y el trenzado quedaba sin corrección de luminancia.
+          shader.uniforms.uMapMeanLum = { value: mediaLumDeMapa(c) }
           shader.vertexShader =
             'varying float vStripeU;\n' +
             shader.vertexShader.replace(
               '#include <begin_vertex>',
-              '#include <begin_vertex>\n  vStripeU = position.' + tgt.axis + ';'
+              '#include <begin_vertex>\n  vStripeU = position.' + (tgt ? tgt.axis : 'x') + ';'
             )
           shader.fragmentShader =
             'varying float vStripeU;\nuniform vec3 uStripeColor;\nuniform float uStripeOn;\nuniform vec4 uStripeCenters;\nuniform float uStripeHW;\n' +
+            'uniform float uExactOn;\nuniform vec3 uExactColor;\nuniform float uMapMeanLum;\n' +
             shader.fragmentShader.replace(
               '#include <map_fragment>',
               '#include <map_fragment>\n' +
+                // En modo exacto el material va en BLANCO, así que acá
+                // diffuseColor es la muestra cruda de la textura.
+                '  #ifdef USE_MAP\n' +
+                '  if (uExactOn > 0.5) {\n' +
+                '    float l = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / max(uMapMeanLum, 1e-4);\n' +
+                '    diffuseColor.rgb = uExactColor * l;\n' +
+                '  }\n' +
+                '  #endif\n' +
                 '  {\n' +
                 '    float sm = 0.0;\n' +
                 '    for (int i = 0; i < 4; i++) {\n' +
@@ -667,24 +741,36 @@ export function Model(props: any) {
     })
   }, [scene])
 
-  // Empujar el color/on-off de las franjas a los shaders ya compilados (y a los
-  // refs que lee el onBeforeCompile en la primera compilación).
+  // Empujar el color/on-off de las franjas Y el color exacto del interior a los
+  // shaders ya compilados (y a los refs que lee el onBeforeCompile en la
+  // primera compilación).
   useLayoutEffect(() => {
     const on = stripeColor && stripeColor !== 'off' ? 1 : 0
     stripeOnRef.current = on
     if (on) stripeColorRef.current.set(stripeColor)
+    const exOn = interiorExact ? 1 : 0
+    exactOnRef.current = exOn
+    if (interiorExact) exactColorRef.current.set(interiorExact)
     scene.traverse((o) => {
       if (!(o instanceof THREE.Mesh)) return
       const mats = Array.isArray(o.material) ? o.material : [o.material]
       for (const m of mats) {
         const sh = m && (m as THREE.Material).userData?.stripeShader
-        if (sh) {
-          sh.uniforms.uStripeOn.value = on
-          if (on) sh.uniforms.uStripeColor.value.set(stripeColor)
+        // Guardas por uniform: un shader capturado por una compilación anterior
+        // puede no tener los uniforms nuevos (pasa con HMR y si three recompila).
+        // Sin esto, tocar un color tiraba "Cannot set properties of undefined".
+        if (sh?.uniforms) {
+          const u = sh.uniforms
+          if (u.uStripeOn) u.uStripeOn.value = on
+          if (on && u.uStripeColor) u.uStripeColor.value.set(stripeColor)
+          if (u.uExactOn) u.uExactOn.value = exOn
+          if (interiorExact && u.uExactColor) u.uExactColor.value.set(interiorExact)
+          // El promedio se calcula la primera vez que se pinta el material.
+          if (u.uMapMeanLum) u.uMapMeanLum.value = mediaLumDeMapa(m as THREE.MeshStandardMaterial)
         }
       }
     })
-  }, [stripeColor, scene])
+  }, [stripeColor, interiorExact, scene])
 
   // Selectores dinámicos: pintura + llantas + adhesivos.
   useLayoutEffect(() => {
@@ -757,8 +843,18 @@ export function Model(props: any) {
           m.userData.__origRough = m.roughness
         }
         const orig = m.userData.__origColor as THREE.Color
-        const t = new THREE.Color(interiorTint)
-        m.color.setRGB(orig.r * t.r, orig.g * t.g, orig.b * t.b)
+        if (interiorExact) {
+          // Sin textura: el color va tal cual. Con textura (trenzado): blanco,
+          // y el shader pone el tono usando la textura como luminancia.
+          if (m.map) {
+            m.color.setRGB(1, 1, 1) // el shader pone el tono (ver mediaLumDeMapa)
+          } else {
+            m.color.set(interiorExact)
+          }
+        } else {
+          const t = new THREE.Color(interiorTint)
+          m.color.setRGB(orig.r * t.r, orig.g * t.g, orig.b * t.b)
+        }
         // acabado: 0 = original del GLB; 1 = cuero metalizado
         const or = m.userData.__origRough as number
         m.metalness = interiorFinish * 0.9
@@ -895,7 +991,7 @@ export function Model(props: any) {
       }
       for (const m of o.userData.__letterMats as THREE.MeshStandardMaterial[]) aplicar(m)
     })
-  }, [paintColor, paintFinish, rimColor, rimFinish, valleyColor, valleyFinish, decalColor, decalFinish, interiorTint, interiorFinish, gaugeColor, applyToMaterials, paintMaterial, scene, vehicle, jaguarVariant])
+  }, [paintColor, paintFinish, rimColor, rimFinish, valleyColor, valleyFinish, decalColor, decalFinish, interiorTint, interiorExact, interiorFinish, gaugeColor, applyToMaterials, paintMaterial, scene, vehicle, jaguarVariant])
 
   return (
     <group {...props} dispose={null}>
