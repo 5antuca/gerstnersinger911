@@ -291,30 +291,33 @@ export function Model(props: any) {
     const band = scene.getObjectByName('PORSCHE_decal_tex') as THREE.Mesh | undefined
     if (band && band.geometry && band.geometry.index) {
       band.updateWorldMatrix(true, false)
-      // La ventana de corte la define la CHAPA de cada puerta (su "final
-      // curvo", referencia que dio el user) — no números fijos. Con el corte
-      // hardcodeado 0.61 quedaba una tira de banda de puerta pegada al cuerpo
-      // (la chapa llega a z 0.62) que se veía levitando al abrir.
-      // PERFIL de la chapa: para cada franja de altura (bin de y) se registra
-      // el z mínimo/máximo de la puerta → el corte SIGUE LA CURVA del filo en
-      // vez de ser una línea vertical. ⚠️ traverse(): la chapa izquierda es un
-      // GRUPO multi-material (Carpet_in + Paint_ext) SIN geometry propia —
-      // leerla como Mesh devolvía null y el lado izquierdo caía a un rango
-      // hardcodeado, por eso seguía sobresaliendo (2026-08-14).
+      // La ventana de corte la define la PIEL EXTERIOR de cada puerta a cada
+      // altura → el corte sigue el "final curvo" del filo (referencia del user).
+      //
+      // ⚠️ El perfil se arma con TODAS las piezas de la puerta (explícitas +
+      // herrajes), NO con una malla elegida a mano. Medido en vivo (2026-08-14):
+      // `Plane171` es solo la mitad DELANTERA de la chapa derecha (z 0.00–0.71)
+      // y `Plane002` no expone ninguna malla con geometry (traverse → 0 hits,
+      // caía al fallback `Plane416`). Con esas referencias la ventana nunca
+      // bajaba de z≈0 y la hoja nacía 42cm adelante del filo real (z −0.41):
+      // toda la banda del tramo trasero de la puerta se quedaba en el cuerpo
+      // = los "trazos de adhesivo" que quedaban en el vano al abrir.
+      // La unión de piezas da un filo limpio y simétrico en ambos lados
+      // (y0.295 → −0.309 · y0.335 → −0.375 · y0.395 → −0.409).
       const Y0 = 0.18, Y1 = 0.48, NB = 30 // bins de 1cm en la franja de la banda
-      const perfilDe = (nm: string): { min: Float64Array; max: Float64Array } | null => {
-        const root = scene.getObjectByName(nm)
-        if (!root) return null
+      type Perfil = { min: Float64Array; max: Float64Array }
+      const perfilPuerta = (nombres: string[], extras: THREE.Object3D[], signo: number): Perfil | null => {
         const min = new Float64Array(NB).fill(Infinity)
         const max = new Float64Array(NB).fill(-Infinity)
         const v = new THREE.Vector3()
         let hits = 0
-        root.traverse((o) => {
+        const leer = (root: THREE.Object3D) => root.traverse((o) => {
           if (!(o instanceof THREE.Mesh) || !o.geometry) return
           const pos = (o.geometry as THREE.BufferGeometry).attributes.position
           for (let i = 0; i < pos.count; i++) {
             v.set(pos.getX(i), pos.getY(i), pos.getZ(i))
             o.localToWorld(v)
+            if (v.x * signo < 0.72) continue // solo PIEL EXTERIOR (el herraje interior no define el filo)
             const b = Math.floor(((v.y - Y0) / (Y1 - Y0)) * NB)
             if (b < 0 || b >= NB) continue
             if (v.z < min[b]) min[b] = v.z
@@ -322,40 +325,35 @@ export function Model(props: any) {
             hits++
           }
         })
+        for (const nm of nombres) { const o = scene.getObjectByName(nm); if (o) leer(o) }
+        for (const o of extras) leer(o)
         if (!hits) return null
-        // rellenar bins vacíos con el vecino más cercano (bordes de la chapa)
-        for (let i = 0; i < NB; i++) if (min[i] === Infinity) {
+        // Rellenar SOLO los huecos INTERIORES (alguna fila sin vértices por el
+        // muestreo). Los bins por debajo del primero cubierto quedan sin
+        // ventana a propósito: ahí vive el ZÓCALO, que debe quedarse quieto al
+        // abrir la puerta (pedido explícito del user).
+        let lo = 0; while (lo < NB && min[lo] === Infinity) lo++
+        let hi = NB - 1; while (hi >= 0 && min[hi] === Infinity) hi--
+        for (let i = lo; i <= hi; i++) if (min[i] === Infinity) {
           for (let d = 1; d < NB; d++) {
-            if (i - d >= 0 && min[i - d] !== Infinity) { min[i] = min[i - d]; max[i] = max[i - d]; break }
-            if (i + d < NB && min[i + d] !== Infinity) { min[i] = min[i + d]; max[i] = max[i + d]; break }
+            if (i - d >= lo && min[i - d] !== Infinity) { min[i] = min[i - d]; max[i] = max[i - d]; break }
+            if (i + d <= hi && min[i + d] !== Infinity) { min[i] = min[i + d]; max[i] = max[i + d]; break }
           }
         }
         return { min, max }
       }
       // Sin margen: el corte cae EXACTO en el filo de la chapa.
       const MARGEN = 0
-      const perfR = perfilDe('Plane171')
-      const perfL = perfilDe('Plane002') ?? perfilDe('Plane416')
-      const ventana = (perf: { min: Float64Array; max: Float64Array } | null, y: number): [number, number] => {
-        if (!perf) return [-0.52, 0.64]
+      const perfR = perfilPuerta(DOOR_R, extraR, 1)
+      const perfL = perfilPuerta(DOOR_L, extraL, -1)
+      // Bin sin cubrir → [Infinity, -Infinity] → ventana vacía por construcción
+      // (no se le saca nada a la banda a esa altura). Sin perfil, ventana vacía
+      // también: degradar a "banda intacta" es preferible a partirla mal.
+      const ventana = (perf: Perfil | null, y: number): [number, number] => {
+        if (!perf) return [Infinity, -Infinity]
         const b = Math.min(NB - 1, Math.max(0, Math.floor(((y - Y0) / (Y1 - Y0)) * NB)))
         return [perf.min[b], perf.max[b]]
       }
-      // Rango TOTAL de la puerta (todas las alturas): lo que caiga acá se saca
-      // del cuerpo SIEMPRE. La ventana curva define qué se lleva la hoja, pero
-      // es más angosta en algunas alturas y dejaba 5294 triángulos de banda en
-      // el hueco de la puerta — el "rastro del adhesivo" que quedaba adentro
-      // con la puerta abierta (2026-08-14).
-      const total = (perf: { min: Float64Array; max: Float64Array } | null): [number, number] => {
-        if (!perf) return [-0.52, 0.64]
-        let lo = Infinity, hi = -Infinity
-        for (let i = 0; i < NB; i++) {
-          if (perf.min[i] < lo) lo = perf.min[i]
-          if (perf.max[i] > hi) hi = perf.max[i]
-        }
-        return [lo, hi]
-      }
-      const totR = total(perfR), totL = total(perfL)
       const bpos = band.geometry.attributes.position
       const bidx = band.geometry.index.array
       const cW = new THREE.Vector3()
