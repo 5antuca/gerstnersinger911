@@ -82,9 +82,9 @@ function esInteriorTintable(nombre: string): boolean {
     n.startsWith('leather_bg') ||
     n.includes('vent_caramel') ||
     n === 'leather_pattern' ||
-    n.startsWith('lp_butaca') ||
-    // fondo crema del reloj central (tacómetro): acompaña el tono del interior
-    n.startsWith('rev meter')
+    n.startsWith('lp_butaca')
+    // el reloj central ('rev meter') tiene selector propio (gaugeColor);
+    // con gaugeColor='auto' replica el comportamiento viejo (sigue al interior)
   )
 }
 
@@ -122,6 +122,7 @@ export function Model(props: any) {
   const interiorTint = useConfiguratorStore((s) => s.interiorTint)
   const interiorFinish = useConfiguratorStore((s) => s.interiorFinish)
   const stripeColor = useConfiguratorStore((s) => s.stripeColor)
+  const gaugeColor = useConfiguratorStore((s) => s.gaugeColor)
   const doorsOpen = useConfiguratorStore((s) => s.doorsOpen)
   const rimFinish = useConfiguratorStore((s) => s.rimFinish)
   const valleyFinish = useConfiguratorStore((s) => s.valleyFinish)
@@ -670,6 +671,21 @@ export function Model(props: any) {
         m.roughness = or * (1 - interiorFinish) + 0.3 * interiorFinish
         m.needsUpdate = true
       }
+      // Esfera del RELOJ CENTRAL (Rev meter.001): selector propio. 'auto' =
+      // comportamiento histórico (esfera original × tinte del interior); un
+      // color elegido tiñe la esfera directo (el dibujo del dial se conserva
+      // porque el color multiplica a la textura).
+      if (m.name.toLowerCase().startsWith('rev meter')) {
+        if (!m.userData.__origColor) m.userData.__origColor = m.color.clone()
+        const orig = m.userData.__origColor as THREE.Color
+        if (gaugeColor === 'auto') {
+          const t = new THREE.Color(interiorTint)
+          m.color.setRGB(orig.r * t.r, orig.g * t.g, orig.b * t.b)
+        } else {
+          m.color.set(gaugeColor)
+        }
+        m.needsUpdate = true
+      }
       // FAROS de TODOS los Jaguar (config + Titi): three.js renderiza el vidrio/transmisión
       // más plano que el path-tracer de Blender. Estos ajustes corren para CUALQUIER variante
       // (no solo el recolor del config) → recuperan la profundidad del faro como en Blender:
@@ -785,7 +801,7 @@ export function Model(props: any) {
       }
       for (const m of o.userData.__letterMats as THREE.MeshStandardMaterial[]) aplicar(m)
     })
-  }, [paintColor, paintFinish, rimColor, rimFinish, valleyColor, valleyFinish, decalColor, decalFinish, interiorTint, interiorFinish, applyToMaterials, paintMaterial, scene, vehicle, jaguarVariant])
+  }, [paintColor, paintFinish, rimColor, rimFinish, valleyColor, valleyFinish, decalColor, decalFinish, interiorTint, interiorFinish, gaugeColor, applyToMaterials, paintMaterial, scene, vehicle, jaguarVariant])
 
   return (
     <group {...props} dispose={null}>

@@ -53,6 +53,17 @@ export const PRESET_STRIPES = [
   { id: 'negro', hex: '#141414', name: 'Negro' },
 ]
 
+// Esfera del RELOJ CENTRAL (tacómetro, material Rev meter.001). 'auto' =
+// comportamiento original: la esfera crema acompaña el tinte del interior.
+export const PRESET_GAUGES = [
+  { id: 'auto', hex: 'auto', name: 'Original' },
+  { id: 'crema', hex: '#e8ddc4', name: 'Crema' },
+  { id: 'negro', hex: '#1a1a1a', name: 'Negro' },
+  { id: 'blanco', hex: '#f2f2f2', name: 'Blanco' },
+  { id: 'verde', hex: '#2f5d3a', name: 'Verde' },
+  { id: 'bordo', hex: '#6e1f2a', name: 'Bordó' },
+]
+
 // Colores predeterminados de los ADHESIVOS (franjas + banda PORSCHE).
 // El primero es el oro de fábrica del auto (DECAL_COLOR del .blend).
 export const PRESET_DECALS = [
@@ -121,6 +132,9 @@ interface ConfiguratorState {
   // Color de las franjas de las butacas ('off' = sin franjas).
   stripeColor: string;
   setStripeColor: (color: string) => void;
+  // Color de la esfera del reloj central ('auto' = original, sigue al interior).
+  gaugeColor: string;
+  setGaugeColor: (color: string) => void;
   rimColor: string;
   setRimColor: (color: string) => void;
   valleyColor: string;
@@ -164,6 +178,9 @@ export const useConfiguratorStore = create<ConfiguratorState>((set) => ({
   // 'off' = butacas sin franjas (default). Elegir un color las prende.
   stripeColor: 'off',
   setStripeColor: (color) => set({ stripeColor: color }),
+  // 'auto' = esfera original (acompaña el tinte del interior).
+  gaugeColor: 'auto',
+  setGaugeColor: (color) => set({ gaugeColor: color }),
   rimColor: PRESET_RIMS[0].hex,
   setRimColor: (color) => set({ rimColor: color }),
   valleyColor: PRESET_VALLEYS[0].hex,
