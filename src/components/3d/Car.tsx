@@ -291,6 +291,27 @@ export function Model(props: any) {
     const band = scene.getObjectByName('PORSCHE_decal_tex') as THREE.Mesh | undefined
     if (band && band.geometry && band.geometry.index) {
       band.updateWorldMatrix(true, false)
+      // La ventana de corte la define la CHAPA de cada puerta (su "final
+      // curvo", referencia que dio el user) — no números fijos. Con el corte
+      // hardcodeado 0.61 quedaba una tira de banda de puerta pegada al cuerpo
+      // (la chapa llega a z 0.62) que se veía levitando al abrir.
+      const zRangeOf = (nm: string): [number, number] | null => {
+        const o = scene.getObjectByName(nm) as THREE.Mesh | undefined
+        if (!o || !o.geometry) return null
+        const g = o.geometry as THREE.BufferGeometry
+        if (!g.boundingBox) g.computeBoundingBox()
+        const b = g.boundingBox as THREE.Box3
+        const v = new THREE.Vector3()
+        let zmin = Infinity, zmax = -Infinity
+        for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) {
+          v.set(x, y, z); o.localToWorld(v)
+          zmin = Math.min(zmin, v.z); zmax = Math.max(zmax, v.z)
+        }
+        return [zmin, zmax]
+      }
+      const MARGEN = 0.02 // 2cm: cubre el filo curvo sin comerse el guardabarros
+      const zR = zRangeOf('Plane171') ?? [-0.56, 0.61]
+      const zL = zRangeOf('Plane002') ?? [-0.56, 0.61]
       const bpos = band.geometry.attributes.position
       const bidx = band.geometry.index.array
       const cW = new THREE.Vector3()
@@ -302,8 +323,9 @@ export function Model(props: any) {
           (bpos.getY(a) + bpos.getY(b2) + bpos.getY(c2)) / 3,
           (bpos.getZ(a) + bpos.getZ(b2) + bpos.getZ(c2)) / 3
         ).applyMatrix4(band.matrixWorld)
-        const enPuertaZ = cW.z > -0.56 && cW.z < 0.61
         const axx = Math.abs(cW.x)
+        const w = cW.x > 0 ? zR : zL
+        const enPuertaZ = cW.z > w[0] - MARGEN && cW.z < w[1] + MARGEN
         if (enPuertaZ && axx > 0.7) {
           if (cW.x > 0) iR.push(a, b2, c2)
           else iL.push(a, b2, c2)
