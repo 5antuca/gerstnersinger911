@@ -300,10 +300,19 @@ export function Model(props: any) {
           (bpos.getY(a) + bpos.getY(b2) + bpos.getY(c2)) / 3,
           (bpos.getZ(a) + bpos.getZ(b2) + bpos.getZ(c2)) / 3
         ).applyMatrix4(band.matrixWorld)
-        const enPuerta = cW.z > -0.56 && cW.z < 0.61 && Math.abs(cW.x) > 0.7
-        if (enPuerta && cW.x > 0) iR.push(a, b2, c2)
-        else if (enPuerta) iL.push(a, b2, c2)
-        else iBody.push(a, b2, c2)
+        const enPuertaZ = cW.z > -0.56 && cW.z < 0.61
+        const axx = Math.abs(cW.x)
+        if (enPuertaZ && axx > 0.7) {
+          // piel exterior de la hoja → viaja con su puerta
+          if (cW.x > 0) iR.push(a, b2, c2)
+          else iL.push(a, b2, c2)
+        } else if (enPuertaZ && axx > 0.45) {
+          // pliegue INTERNO del cascarón bajo la puerta: ni viaja (atraviesa la
+          // carrocería al girar) ni queda (se ve flotando expuesto al abrir) →
+          // se ELIMINA del render ("los adhesivos siguen bugueados", 2026-08-14)
+        } else {
+          iBody.push(a, b2, c2)
+        }
       }
       if (iR.length || iL.length) {
         const mkParte = (indices: number[], name: string) => {
