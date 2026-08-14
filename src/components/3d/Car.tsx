@@ -295,23 +295,30 @@ export function Model(props: any) {
       // curvo", referencia que dio el user) — no números fijos. Con el corte
       // hardcodeado 0.61 quedaba una tira de banda de puerta pegada al cuerpo
       // (la chapa llega a z 0.62) que se veía levitando al abrir.
+      // ⚠️ el bbox COMPLETO de la chapa no sirve (el borde es curvo y el marco
+      // de ventana estira el rango): se mide el z de la chapa SOLO a la altura
+      // donde vive la banda (y 0.24–0.44) → los filos reales de la puerta ahí.
       const zRangeOf = (nm: string): [number, number] | null => {
         const o = scene.getObjectByName(nm) as THREE.Mesh | undefined
         if (!o || !o.geometry) return null
         const g = o.geometry as THREE.BufferGeometry
-        if (!g.boundingBox) g.computeBoundingBox()
-        const b = g.boundingBox as THREE.Box3
+        const pos = g.attributes.position
         const v = new THREE.Vector3()
         let zmin = Infinity, zmax = -Infinity
-        for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) {
-          v.set(x, y, z); o.localToWorld(v)
+        for (let i = 0; i < pos.count; i++) {
+          v.set(pos.getX(i), pos.getY(i), pos.getZ(i))
+          o.localToWorld(v)
+          if (v.y < 0.24 || v.y > 0.44) continue // franja de la banda
           zmin = Math.min(zmin, v.z); zmax = Math.max(zmax, v.z)
         }
-        return [zmin, zmax]
+        return zmin === Infinity ? null : [zmin, zmax]
       }
-      const MARGEN = 0.02 // 2cm: cubre el filo curvo sin comerse el guardabarros
-      const zR = zRangeOf('Plane171') ?? [-0.56, 0.61]
-      const zL = zRangeOf('Plane002') ?? [-0.56, 0.61]
+      // Sin margen: el corte cae EXACTO en el filo de la chapa. Con +2cm la
+      // banda sobresalía de la puerta al abrir ("el adhesivo sigue más allá de
+      // la puerta", 2026-08-14); con menos, quedaba una tira flotando.
+      const MARGEN = 0
+      const zR = zRangeOf('Plane171') ?? [-0.52, 0.64]
+      const zL = zRangeOf('Plane002') ?? [-0.52, 0.64]
       const bpos = band.geometry.attributes.position
       const bidx = band.geometry.index.array
       const cW = new THREE.Vector3()
