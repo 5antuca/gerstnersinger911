@@ -341,6 +341,21 @@ export function Model(props: any) {
         const b = Math.min(NB - 1, Math.max(0, Math.floor(((y - Y0) / (Y1 - Y0)) * NB)))
         return [perf.min[b], perf.max[b]]
       }
+      // Rango TOTAL de la puerta (todas las alturas): lo que caiga acá se saca
+      // del cuerpo SIEMPRE. La ventana curva define qué se lleva la hoja, pero
+      // es más angosta en algunas alturas y dejaba 5294 triángulos de banda en
+      // el hueco de la puerta — el "rastro del adhesivo" que quedaba adentro
+      // con la puerta abierta (2026-08-14).
+      const total = (perf: { min: Float64Array; max: Float64Array } | null): [number, number] => {
+        if (!perf) return [-0.52, 0.64]
+        let lo = Infinity, hi = -Infinity
+        for (let i = 0; i < NB; i++) {
+          if (perf.min[i] < lo) lo = perf.min[i]
+          if (perf.max[i] > hi) hi = perf.max[i]
+        }
+        return [lo, hi]
+      }
+      const totR = total(perfR), totL = total(perfL)
       const bpos = band.geometry.attributes.position
       const bidx = band.geometry.index.array
       const cW = new THREE.Vector3()
@@ -357,6 +372,9 @@ export function Model(props: any) {
         // triángulo → el corte sigue el filo curvo de la puerta
         const w = ventana(cW.x > 0 ? perfR : perfL, cW.y)
         const enPuertaZ = cW.z > w[0] - MARGEN && cW.z < w[1] + MARGEN
+        // rango total de la hoja: define la zona que el CUERPO no conserva
+        const t = cW.x > 0 ? totR : totL
+        const enHuecoPuerta = cW.z > t[0] && cW.z < t[1]
         // 0.75 = el hueco del histograma entre las dos capas del cascarón:
         // piel EXTERIOR en x 0.76–0.79 (viaja con la hoja) y pliegue INTERNO
         // en 0.70–0.74 (se descarta: con el umbral en 0.70 viajaba y asomaba
@@ -364,9 +382,11 @@ export function Model(props: any) {
         if (enPuertaZ && axx > 0.75) {
           if (cW.x > 0) iR.push(a, b2, c2)
           else iL.push(a, b2, c2)
-        } else if (enPuertaZ && axx > 0.45) {
-          // pliegue interno (zócalo + cara interna de la puerta): no va a
-          // ninguna parte — expuesto flota, movido atraviesa la carrocería
+        } else if (enHuecoPuerta && axx > 0.45) {
+          // Todo lo demás en el hueco de la puerta se DESCARTA: el pliegue
+          // interno y los restos que la ventana curva no se llevó. Así, con la
+          // hoja abierta, el adhesivo queda SOLO en la puerta y el hueco no
+          // muestra ningún rastro.
         } else {
           iBody.push(a, b2, c2)
         }
