@@ -320,9 +320,13 @@ export function Model(props: any) {
           g.setIndex(indices)
           const parte = new THREE.Mesh(g, band.material)
           parte.name = name
-          parte.applyMatrix4(band.matrixWorld) // heredar transform de la fuente
+          // ⚠️ transform LOCAL de la fuente y MISMO padre. Con matrixWorld el
+          // offset del rig (centrado + apoyo en el piso) se aplicaba DOS veces
+          // → las partes quedaban +6.1cm arriba y corridas ("los adhesivos
+          // levitando", medido 2026-08-14).
+          parte.applyMatrix4(band.matrix)
           parte.visible = false // solo se muestran con puertas ABIERTAS
-          scene.add(parte)
+          ;(band.parent ?? scene).add(parte)
           return parte
         }
         mkParte(iBody, 'PORSCHE_band_body')
