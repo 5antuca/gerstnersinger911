@@ -245,6 +245,10 @@ function useMediaQuery(query: string) {
   return matches
 }
 
+// Preset con el que arranca el EDITOR. Si no existe (renombrado/borrado), el
+// configurador abre en sus colores por defecto sin romper nada.
+const PERFIL_INICIAL_EDITOR = 'Franco Bitt'
+
 /*
   El configurador se renderiza en DOS rutas con el mismo 3D:
 
@@ -357,7 +361,11 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
     fetch('/api/perfiles', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(perfil) })
       .then((r) => setSyncEstado(r.ok ? 'cloud' : 'local'))
       .catch(() => setSyncEstado('local'))
-    setNombrePerfil('')
+    // El recién guardado pasa a ser el activo, y el nombre queda en el form
+    // (antes se limpiaba): así el siguiente guardado vuelve a sobreescribir
+    // este mismo perfil sin retipear.
+    setPerfilActivo(name)
+    setNombrePerfil(name)
     setActiveTab(null)
   }
   const cargarPerfil = (p: Perfil) => {
@@ -374,21 +382,27 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
     // el Environment de la escena → default a 'city' (re-guardá el perfil para fijar la luz).
     setEnvironment((p.cfg.environment as Parameters<typeof setEnvironment>[0]) ?? 'city')
     setPerfilActivo(p.name)
+    // Precargar el nombre en el form de guardar: sobreescribir el preset que
+    // estás tocando es un Enter. Para crear otro, borrás y escribís uno nuevo.
+    setNombrePerfil(p.name)
   }
-  /* El link para clientes puede traer `?p=<preset>`: el visor abre en ESE auto.
-     Se lee de window.location (no useSearchParams) para no forzar un Suspense
-     ni sacar a /ver del prerender. Espera a que lleguen los presets: primero
-     entran los de localStorage y después los de la nube, así que mientras no
-     encuentre el nombre se vuelve a intentar en cada actualización. */
-  const perfilDeUrlAplicado = useRef(false)
+  /* PRESET DE ARRANQUE. En el visor lo define el link (`?p=<preset>`); en el
+     editor es siempre "Franco Bitt". Se lee de window.location y no de
+     useSearchParams para no forzar un Suspense ni sacar a /ver del prerender.
+     Espera a que lleguen los presets: entran en dos tandas (localStorage
+     primero, nube después), así que mientras no encuentre el nombre se vuelve
+     a intentar en cada actualización de la lista. */
+  const perfilInicialAplicado = useRef(false)
   useEffect(() => {
-    if (!cliente || perfilDeUrlAplicado.current || perfiles.length === 0) return
-    const buscado = new URLSearchParams(window.location.search).get('p')
-    if (!buscado) { perfilDeUrlAplicado.current = true; return }
+    if (perfilInicialAplicado.current || perfiles.length === 0) return
+    const buscado = cliente
+      ? new URLSearchParams(window.location.search).get('p')
+      : PERFIL_INICIAL_EDITOR
+    if (!buscado) { perfilInicialAplicado.current = true; return }
     const p = perfiles.find((x) => x.name === buscado)
-    if (!p) return // puede llegar en la tanda de la nube
+    if (!p) return // puede estar en la tanda de la nube, que llega después
     cargarPerfil(p)
-    perfilDeUrlAplicado.current = true
+    perfilInicialAplicado.current = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cliente, perfiles])
   const borrarPerfil = (name: string) => {
@@ -448,6 +462,8 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
   // El visor de cliente no tiene selector de vehículo, así que lista TODOS los
   // presets: cada uno trae su vehículo y `cargarPerfil` lo cambia al aplicarlo.
   const perfilesVisibles = cliente ? perfiles : perfilesVehiculo
+  // ¿El nombre tipeado pisa un perfil que ya existe? Define el texto del botón.
+  const sobreescribe = perfiles.some((p) => p.name === nombrePerfil.trim())
 
   return (
     <main
@@ -760,9 +776,12 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
               />
               <button
                 onClick={guardarPerfil}
-                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-black hover:bg-white/85 transition-all"
+                disabled={!nombrePerfil.trim()}
+                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-black hover:bg-white/85 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               >
-                Guardar
+                {/* El nombre viene precargado con el preset abierto, así que
+                    conviene decir cuál de las dos cosas va a pasar. */}
+                {sobreescribe ? 'Sobreescribir' : 'Guardar nuevo'}
               </button>
             </div>
           )}
