@@ -372,9 +372,13 @@ export function Model(props: any) {
         // triángulo → el corte sigue el filo curvo de la puerta
         const w = ventana(cW.x > 0 ? perfR : perfL, cW.y)
         const enPuertaZ = cW.z > w[0] - MARGEN && cW.z < w[1] + MARGEN
-        // rango total de la hoja: define la zona que el CUERPO no conserva
-        const t = cW.x > 0 ? totR : totL
-        const enHuecoPuerta = cW.z > t[0] && cW.z < t[1]
+        // El CUERPO descarta con la MISMA frontera curva que usa la hoja para
+        // tomar. Con el bbox total (−0.52) quedaba un hueco de 11cm hasta el
+        // filo real (−0.41) → la banda del cuarto trasero terminaba cortada
+        // antes de la puerta. Y con un corte recto único, la banda de la hoja
+        // sobresalía en la esquina inferior curva. Frontera compartida y
+        // curva = sin hueco y sin sobrante (2026-08-14).
+        const enHuecoPuerta = enPuertaZ
         // 0.75 = el hueco del histograma entre las dos capas del cascarón:
         // piel EXTERIOR en x 0.76–0.79 (viaja con la hoja) y pliegue INTERNO
         // en 0.70–0.74 (se descarta: con el umbral en 0.70 viajaba y asomaba
