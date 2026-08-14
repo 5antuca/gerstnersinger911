@@ -243,8 +243,11 @@ export function Model(props: any) {
     if (scene.getObjectByName('door_pivot_R')) return // ya armado (useLoader cachea la escena)
     // Piezas grandes conocidas (el vidrio sobresale del corte en z; la regla
     // de volumen lo excluiría — por eso van explícitas).
-    const DOOR_R = ['Plane171', 'Plane408', 'Cube006', 'Cube038', 'Plane001', 'Plane032', 'Plane142', 'PORSCHE_decal_door_R']
-    const DOOR_L = ['Plane002', 'Plane416', 'Cube083', 'Cube087', 'Plane003', 'Plane413', 'Plane414', 'PORSCHE_decal_door_L']
+    // Circle125/Circle346 = marco/sello perimetral de cada puerta (grandes →
+    // el filtro de volumen los excluiría; el user los marcó con ?marcar=1:
+    // "Circle125 tiene que moverse junto con la puerta", 2026-08-14).
+    const DOOR_R = ['Plane171', 'Plane408', 'Cube006', 'Cube038', 'Plane001', 'Plane032', 'Plane142', 'PORSCHE_decal_door_R', 'Circle125']
+    const DOOR_L = ['Plane002', 'Plane416', 'Cube083', 'Cube087', 'Plane003', 'Plane413', 'Plane414', 'PORSCHE_decal_door_L', 'Circle346']
     const explicit = new Set([...DOOR_R, ...DOOR_L])
     const extraR: THREE.Object3D[] = []
     const extraL: THREE.Object3D[] = []
@@ -275,20 +278,19 @@ export function Model(props: any) {
       if (V.z < -0.6 || V.z > 0.34) return
       ;(V.x > 0 ? extraR : extraL).push(o)
     })
-    // TIRAS FUSIONADAS de tornillos de los paneles de puerta: Plane163 (~1.4m,
-    // tornillos de ambos paneles) y la fila Bolt (~1.3m) cruzan todo el auto en
-    // una sola malla → ningún filtro de tamaño puede moverlas enteras. Se
-    // parten por TRIÁNGULO (centroide en MUNDO, ventana z de la puerta) en
-    // mallas nuevas que comparten atributos/material y HEREDAN el transform de
-    // la fuente; el índice del original queda con el resto. ⚠️ La banda
-    // PORSCHE del zócalo NO se parte (su cascarón tiene caras internas y la
-    // cirugía la glitcheaba — trade-off aceptado: queda quieta al abrir).
-    const splitPorPuerta = (meshName: string, minAbsX: number) => {
-      const m = scene.getObjectByName(meshName) as THREE.Mesh | undefined
-      if (!m || !m.geometry || !m.geometry.index) return
-      m.updateWorldMatrix(true, false)
-      const bpos = m.geometry.attributes.position
-      const bidx = m.geometry.index.array
+    // BANDA PORSCHE del zócalo (PORSCHE_decal_tex): una malla recorre todo el
+    // lateral → su tramo sobre cada hoja debe VIAJAR con la puerta (pedido
+    // 2026-08-14: "el del lado del acompañante sigue flotando"). Se parte por
+    // TRIÁNGULO con centroide en MUNDO; |x|>0.7 toma SOLO la piel exterior
+    // (0.77–0.84) y deja las caras internas del cascarón en la carrocería
+    // (moverlas era el "adhesivo bugueado"). Las partes heredan el transform.
+    // ⚠️ Las tiras Plane163/Bolt NO se parten: el user marcó con ?marcar=1
+    // que no deben moverse.
+    const band = scene.getObjectByName('PORSCHE_decal_tex') as THREE.Mesh | undefined
+    if (band && band.geometry && band.geometry.index) {
+      band.updateWorldMatrix(true, false)
+      const bpos = band.geometry.attributes.position
+      const bidx = band.geometry.index.array
       const cW = new THREE.Vector3()
       const iBody: number[] = [], iR: number[] = [], iL: number[] = []
       for (let i = 0; i < bidx.length; i += 3) {
@@ -297,29 +299,28 @@ export function Model(props: any) {
           (bpos.getX(a) + bpos.getX(b2) + bpos.getX(c2)) / 3,
           (bpos.getY(a) + bpos.getY(b2) + bpos.getY(c2)) / 3,
           (bpos.getZ(a) + bpos.getZ(b2) + bpos.getZ(c2)) / 3
-        ).applyMatrix4(m.matrixWorld)
-        const enPuerta = cW.z > -0.56 && cW.z < 0.61 && Math.abs(cW.x) > minAbsX
+        ).applyMatrix4(band.matrixWorld)
+        const enPuerta = cW.z > -0.56 && cW.z < 0.61 && Math.abs(cW.x) > 0.7
         if (enPuerta && cW.x > 0) iR.push(a, b2, c2)
         else if (enPuerta) iL.push(a, b2, c2)
         else iBody.push(a, b2, c2)
       }
-      if (!iR.length && !iL.length) return
-      const mkParte = (indices: number[], name: string) => {
-        const g = new THREE.BufferGeometry()
-        for (const k of Object.keys(m.geometry.attributes)) g.setAttribute(k, m.geometry.attributes[k])
-        g.setIndex(indices)
-        const parte = new THREE.Mesh(g, m.material)
-        parte.name = name
-        parte.applyMatrix4(m.matrixWorld) // heredar transform de la fuente
-        scene.add(parte)
-        return parte
+      if (iR.length || iL.length) {
+        const mkParte = (indices: number[], name: string) => {
+          const g = new THREE.BufferGeometry()
+          for (const k of Object.keys(band.geometry.attributes)) g.setAttribute(k, band.geometry.attributes[k])
+          g.setIndex(indices)
+          const parte = new THREE.Mesh(g, band.material)
+          parte.name = name
+          parte.applyMatrix4(band.matrixWorld) // heredar transform de la fuente
+          scene.add(parte)
+          return parte
+        }
+        if (iR.length) extraR.push(mkParte(iR, 'PORSCHE_band_door_R'))
+        if (iL.length) extraL.push(mkParte(iL, 'PORSCHE_band_door_L'))
+        band.geometry.setIndex(iBody)
       }
-      if (iR.length) extraR.push(mkParte(iR, meshName + '_door_R'))
-      if (iL.length) extraL.push(mkParte(iL, meshName + '_door_L'))
-      m.geometry.setIndex(iBody)
     }
-    splitPorPuerta('Plane163', 0.4) // tornillos de los paneles internos
-    splitPorPuerta('Bolt', 0.4) // fila de bulones de los paneles
 
     // COMPLETAR POR SIMETRÍA: si una pieza quedó capturada de un lado y su
     // gemela espejada (x→−x) no (nombres/marcos asimétricos), se suma sola.
@@ -382,6 +383,61 @@ export function Model(props: any) {
     if (r) r.rotation.y = -a // derecha: borde trasero gira hacia +x (afuera)
     if (l) l.rotation.y = a
   }, [doorsOpen, scene, vehicle])
+
+  // MODO MARCADOR (?marcar=1 en la URL): doble clic sobre una pieza → se pinta
+  // MAGENTA y su nombre se suma a una lista copiable en pantalla. Para que el
+  // user señale exactamente qué piezas corregir (ej. cuáles deben viajar con
+  // la puerta) sin describirlas. Doble clic de nuevo la desmarca.
+  const camera = useThree((s) => s.camera)
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined' || !window.location.search.includes('marcar')) return
+    const el = gl.domElement as HTMLCanvasElement & { __marcadorOn?: boolean }
+    if (el.__marcadorOn) return // evitar listeners duplicados por re-mounts
+    el.__marcadorOn = true
+    const ray = new THREE.Raycaster()
+    const ndc = new THREE.Vector2()
+    const marked = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>()
+    let panel = document.getElementById('marcador-piezas') as HTMLDivElement | null
+    if (!panel) {
+      panel = document.createElement('div')
+      panel.id = 'marcador-piezas'
+      panel.style.cssText =
+        'position:fixed;top:12px;left:12px;z-index:99999;background:rgba(0,0,0,.85);color:#fff;font:12px monospace;padding:10px 12px;border-radius:10px;max-width:300px;pointer-events:auto'
+      panel.innerHTML =
+        '<b>🎯 Marcador de piezas</b><br/>Doble clic sobre una pieza para marcarla (magenta).<div id="mp-list" style="margin-top:6px;white-space:pre-wrap;color:#f6f"></div><button id="mp-copy" style="margin-top:6px;padding:3px 10px;border-radius:6px;background:#fff;color:#000;cursor:pointer">Copiar lista</button><span id="mp-ok" style="margin-left:6px"></span>'
+      document.body.appendChild(panel)
+      const btn = document.getElementById('mp-copy') as HTMLButtonElement
+      btn.onclick = () => {
+        const t = (document.getElementById('mp-list') as HTMLDivElement).innerText
+        navigator.clipboard?.writeText(t)
+        const ok = document.getElementById('mp-ok') as HTMLSpanElement
+        ok.textContent = '✓ copiado'
+        window.setTimeout(() => (ok.textContent = ''), 1500)
+      }
+    }
+    const onDbl = (e: MouseEvent) => {
+      const r = el.getBoundingClientRect()
+      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
+      ray.setFromCamera(ndc, camera)
+      const hits = ray.intersectObjects(scene.children, true)
+      const hit = hits.find((h) => (h.object as THREE.Mesh).isMesh)
+      if (!hit) return
+      const mesh = hit.object as THREE.Mesh
+      if (marked.has(mesh)) {
+        mesh.material = marked.get(mesh)!
+        marked.delete(mesh)
+      } else {
+        marked.set(mesh, mesh.material)
+        mesh.material = new THREE.MeshBasicMaterial({ color: 0xff00ff })
+      }
+      const list = document.getElementById('mp-list') as HTMLDivElement
+      list.innerText = [...marked.keys()]
+        .map((m) => m.name + (hit.object === m && hit.instanceId != null ? ' [inst ' + hit.instanceId + ']' : ''))
+        .join('\n')
+    }
+    el.addEventListener('dblclick', onDbl)
+    return () => el.removeEventListener('dblclick', onDbl)
+  }, [scene, gl, camera])
 
   // FRANJAS del tejido (feature web). Un PAR de franjas finas verticales por
   // pieza (mock Canva del user, 2026-08-12): butacas delanteras + paneles de
