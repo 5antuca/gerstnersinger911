@@ -356,16 +356,24 @@ export function Model(props: any) {
         const b = Math.min(NB - 1, Math.max(0, Math.floor(((y - Y0) / (Y1 - Y0)) * NB)))
         return perf.cubierto[b] === 1
       }
-      const total = (perf: { min: Float64Array; max: Float64Array } | null): [number, number] => {
-        if (!perf) return [-0.52, 0.64]
+      // Filo de la puerta A LA ALTURA DE LA BANDA (bins y 0.24–0.44). Un único
+      // corte por lado: lo que la hoja se lleva y lo que el cuerpo descarta
+      // usan EL MISMO límite → la banda del cuerpo llega justo hasta el filo
+      // (sin hueco) y no sobra nada en el vano. Con dos límites distintos
+      // quedaba una franja de 11cm sin banda que se veía como un muñón.
+      const filo = (perf: { min: Float64Array; max: Float64Array; cubierto: Uint8Array } | null): [number, number] => {
+        if (!perf) return [-0.41, 0.63]
         let lo = Infinity, hi = -Infinity
-        for (let i = 0; i < NB; i++) {
+        const bIni = Math.floor(((0.24 - Y0) / (Y1 - Y0)) * NB)
+        const bFin = Math.ceil(((0.44 - Y0) / (Y1 - Y0)) * NB)
+        for (let i = Math.max(0, bIni); i < Math.min(NB, bFin); i++) {
+          if (!perf.cubierto[i]) continue
           if (perf.min[i] < lo) lo = perf.min[i]
           if (perf.max[i] > hi) hi = perf.max[i]
         }
-        return [lo, hi]
+        return lo === Infinity ? [-0.41, 0.63] : [lo, hi]
       }
-      const totR = total(perfR), totL = total(perfL)
+      const totR = filo(perfR), totL = filo(perfL)
       const bpos = band.geometry.attributes.position
       const bidx = band.geometry.index.array
       const cW = new THREE.Vector3()
@@ -380,16 +388,12 @@ export function Model(props: any) {
         const axx = Math.abs(cW.x)
         // ventana de z tomada del perfil de la chapa A LA ALTURA de este
         // triángulo → el corte sigue el filo curvo de la puerta
-        const w = ventana(cW.x > 0 ? perfR : perfL, cW.y)
-        const enPuertaZ = cW.z > w[0] - MARGEN && cW.z < w[1] + MARGEN
-        // rango total de la hoja: define la zona que el CUERPO no conserva.
-        // Se extiende 15cm hacia ATRÁS (z−) sólo para la franja ALTA: ahí vive
-        // la rampa donde la banda sube del zócalo al nivel de la puerta, que
-        // con la hoja abierta quedaba como un muñón suelto (2026-08-14). El
-        // cuarto trasero denso (z ≤ −0.67) no se toca.
+        // UN SOLO límite por lado (el filo a la altura de la banda): lo que se
+        // lleva la hoja y lo que el cuerpo descarta comparten frontera, así la
+        // banda del cuerpo llega justo hasta el borde de la puerta.
         const t = cW.x > 0 ? totR : totL
-        const atras = cW.y > 0.29 ? t[0] - 0.15 : t[0]
-        const enHuecoPuerta = cW.z > atras && cW.z < t[1]
+        const enPuertaZ = cW.z > t[0] - MARGEN && cW.z < t[1] + MARGEN
+        const enHuecoPuerta = enPuertaZ
         // 0.75 = el hueco del histograma entre las dos capas del cascarón:
         // piel EXTERIOR en x 0.76–0.79 (viaja con la hoja) y pliegue INTERNO
         // en 0.70–0.74 (se descarta: con el umbral en 0.70 viajaba y asomaba
