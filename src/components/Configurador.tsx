@@ -593,6 +593,30 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
             ))}
           </div>
           )}
+          {/* Visor en MOBILE (viewport bajo): una sola pestaña "Presets",
+              cerrada por defecto. Ahí la fila envuelta de presets tapaba media
+              pantalla; en desktop entra bien y va siempre visible.
+              Este botón solo puede setear 'cargar': ningún panel de edición. */}
+          {cliente && compact && (
+            <div className="w-max mx-auto flex gap-1">
+              <button
+                onClick={() => setActiveTab(activeTab === 'cargar' ? null : 'cargar')}
+                className={`${compact ? 'px-3 py-1 text-[11px]' : 'px-4 py-1.5 text-xs sm:text-sm'} rounded-full font-medium tracking-wide transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'cargar' ? 'bg-white text-black' : 'text-white/65 hover:text-white hover:bg-white/10'
+                }`}
+                aria-expanded={activeTab === 'cargar'}
+              >
+                Presets
+                <svg
+                  width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  className={`transition-transform duration-300 ${activeTab === 'cargar' ? '' : 'rotate-180'}`}
+                >
+                  <path d="M6 15l6-6 6 6" />
+                </svg>
+              </button>
+            </div>
+          )}
 
           {/* contenido inline del tab activo (horizontal, compacto) */}
           {activeTab === 'vehiculos' && (
@@ -786,8 +810,9 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
             </div>
           )}
 
-          {/* En modo cliente la lista va SIEMPRE visible (no hay tabs que abrir). */}
-          {(activeTab === 'cargar' || cliente) && (
+          {/* Editor: se abre con el tab "Cargar". Visor: siempre visible en
+              desktop, y en mobile detrás de la pestaña "Presets". */}
+          {(activeTab === 'cargar' || (cliente && !compact)) && (
             <div className="flex items-center justify-center gap-2 px-2 pt-3 pb-1 flex-wrap max-w-[600px]">
               {perfilesVisibles.length === 0 && (
                 <span className="text-white/40 text-xs py-1">
