@@ -7,7 +7,8 @@ import { COOKIE, tokenDe } from '@/lib/auth'
   PÚBLICO (sin clave):
     /ver            visor de cliente
     /login          formulario
-    /api/login      valida la clave
+    /api/login      valida la clave (o canjea el link de recuperación)
+    /api/recuperar  manda el link de acceso al mail de recuperación
     GET /api/perfiles   el visor necesita leer los presets
 
   CON CLAVE:
@@ -20,7 +21,7 @@ import { COOKIE, tokenDe } from '@/lib/auth'
   igual pero el editor no está protegido.
 */
 
-const PUBLICO = ['/ver', '/login', '/api/login']
+const PUBLICO = ['/ver', '/login', '/api/login', '/api/recuperar']
 
 export async function proxy(req: NextRequest) {
   const clave = process.env.STUDIO_PASSWORD

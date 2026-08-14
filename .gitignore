@@ -35,6 +35,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# .env.example SÍ va al repo: documenta QUÉ variables hacen falta (solo nombres
+# y comentarios, nunca valores). Sin esta excepción el `.env*` de arriba también
+# lo tapaba y la doc nunca llegaba a un clone.
+!.env.example
 
 # vercel
 .vercel
