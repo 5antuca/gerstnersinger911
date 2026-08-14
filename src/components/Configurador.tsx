@@ -534,44 +534,57 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
       {/* ── BOTTOM BAR ── la barra ES el menú: al elegir un tab se expande
           horizontalmente con los controles inline (nada tapa el vehículo). */}
       <nav className={`absolute ${compact ? 'bottom-3' : 'bottom-5'} left-0 right-0 z-30 flex justify-center pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pointer-events-none transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-        <button
-          onClick={toggleAutoRotate}
-          className={`pointer-events-auto shrink-0 self-start ${compact ? 'w-8 h-8' : 'w-10 h-10'} mr-2 rounded-full bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300`}
-          title={autoRotate ? 'Pausar giro' : 'Reanudar giro'}
-          aria-label={autoRotate ? 'Pausar giro' : 'Reanudar giro'}
-        >
-          {autoRotate ? (
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <rect x="6" y="5" width="4" height="14" rx="1" />
-              <rect x="14" y="5" width="4" height="14" rx="1" />
-            </svg>
-          ) : (
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          )}
-        </button>
-        {/* Puertas del Porsche: abre/cierra (solo Porsche; el Jaguar no tiene). */}
-        {vehicle === 'porsche' && (
-          <button
-            onClick={toggleDoors}
-            className={`pointer-events-auto shrink-0 self-start ${compact ? 'w-8 h-8' : 'w-10 h-10'} mr-2 rounded-full backdrop-blur-2xl border flex items-center justify-center transition-all duration-300 ${
-              doorsOpen
-                ? 'bg-white text-black border-white'
-                : 'bg-[#0a0a0a]/75 text-white/70 border-white/10 hover:text-white hover:bg-white/10'
-            }`}
-            title={doorsOpen ? 'Cerrar puertas' : 'Abrir puertas'}
-            aria-label={doorsOpen ? 'Cerrar puertas' : 'Abrir puertas'}
-          >
-            {/* puerta entreabierta: marco + hoja en ángulo */}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 21V4h9" />
-              <path d="M13 4l7 3v14" />
-              <path d="M4 21h16" />
-              <circle cx="16.2" cy="12.5" r="0.6" fill="currentColor" stroke="none" />
-            </svg>
-          </button>
-        )}
+        {/* Pastillas con texto (no botones redondos de ícono solo): crecen a lo
+            ANCHO, que es lo que sobra en apaisado, y no suman altura sobre el
+            auto. `whitespace-nowrap` para que la etiqueta no parta en dos
+            líneas y engorde la barra. */}
+        {(() => {
+          const pastilla = `pointer-events-auto shrink-0 self-start mr-2 rounded-full backdrop-blur-2xl border flex items-center gap-1.5 whitespace-nowrap transition-all duration-300 ${
+            compact ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-2 text-xs sm:text-sm'
+          }`
+          return (
+            <>
+              <button
+                onClick={toggleAutoRotate}
+                className={`${pastilla} bg-[#0a0a0a]/75 border-white/10 text-white/70 hover:text-white hover:bg-white/10`}
+                aria-label={autoRotate ? 'Pausar rotación' : 'Reanudar rotación'}
+              >
+                {autoRotate ? (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <rect x="6" y="5" width="4" height="14" rx="1" />
+                    <rect x="14" y="5" width="4" height="14" rx="1" />
+                  </svg>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                )}
+                <span className="font-medium tracking-wide">{autoRotate ? 'Pausar rotación' : 'Reanudar rotación'}</span>
+              </button>
+              {/* Puertas del Porsche: abre/cierra (solo Porsche; el Jaguar no tiene). */}
+              {vehicle === 'porsche' && (
+                <button
+                  onClick={toggleDoors}
+                  className={`${pastilla} ${
+                    doorsOpen
+                      ? 'bg-white text-black border-white'
+                      : 'bg-[#0a0a0a]/75 text-white/70 border-white/10 hover:text-white hover:bg-white/10'
+                  }`}
+                  aria-label={doorsOpen ? 'Cerrar puertas' : 'Abrir puertas'}
+                >
+                  {/* puerta entreabierta: marco + hoja en ángulo */}
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 21V4h9" />
+                    <path d="M13 4l7 3v14" />
+                    <path d="M4 21h16" />
+                    <circle cx="16.2" cy="12.5" r="0.6" fill="currentColor" stroke="none" />
+                  </svg>
+                  <span className="font-medium tracking-wide">{doorsOpen ? 'Cerrar puertas' : 'Abrir puertas'}</span>
+                </button>
+              )}
+            </>
+          )
+        })()}
         <div className={`pointer-events-auto bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 rounded-3xl ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} shadow-2xl max-w-[88vw] overflow-x-auto`}>
           {/* fila de tabs — NO se renderiza en modo cliente: es la única puerta
               de entrada a los paneles de edición. */}
