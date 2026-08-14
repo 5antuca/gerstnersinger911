@@ -382,9 +382,14 @@ export function Model(props: any) {
         // triángulo → el corte sigue el filo curvo de la puerta
         const w = ventana(cW.x > 0 ? perfR : perfL, cW.y)
         const enPuertaZ = cW.z > w[0] - MARGEN && cW.z < w[1] + MARGEN
-        // rango total de la hoja: define la zona que el CUERPO no conserva
+        // rango total de la hoja: define la zona que el CUERPO no conserva.
+        // Se extiende 15cm hacia ATRÁS (z−) sólo para la franja ALTA: ahí vive
+        // la rampa donde la banda sube del zócalo al nivel de la puerta, que
+        // con la hoja abierta quedaba como un muñón suelto (2026-08-14). El
+        // cuarto trasero denso (z ≤ −0.67) no se toca.
         const t = cW.x > 0 ? totR : totL
-        const enHuecoPuerta = cW.z > t[0] && cW.z < t[1]
+        const atras = cW.y > 0.29 ? t[0] - 0.15 : t[0]
+        const enHuecoPuerta = cW.z > atras && cW.z < t[1]
         // 0.75 = el hueco del histograma entre las dos capas del cascarón:
         // piel EXTERIOR en x 0.76–0.79 (viaja con la hoja) y pliegue INTERNO
         // en 0.70–0.74 (se descarta: con el umbral en 0.70 viajaba y asomaba
