@@ -357,21 +357,32 @@ export function Model(props: any) {
         // triángulo → el corte sigue el filo curvo de la puerta
         const w = ventana(cW.x > 0 ? perfR : perfL, cW.y)
         const enPuertaZ = cW.z > w[0] - MARGEN && cW.z < w[1] + MARGEN
-        if (enPuertaZ && axx > 0.7) {
+        // 0.75 = el hueco del histograma entre las dos capas del cascarón:
+        // piel EXTERIOR en x 0.76–0.79 (viaja con la hoja) y pliegue INTERNO
+        // en 0.70–0.74 (se descarta: con el umbral en 0.70 viajaba y asomaba
+        // por dentro de la puerta abierta — "ese bug de adentro", 2026-08-14).
+        if (enPuertaZ && axx > 0.75) {
           if (cW.x > 0) iR.push(a, b2, c2)
           else iL.push(a, b2, c2)
         } else if (enPuertaZ && axx > 0.45) {
-          // pliegue interno: fuera del set abierto
+          // pliegue interno (zócalo + cara interna de la puerta): no va a
+          // ninguna parte — expuesto flota, movido atraviesa la carrocería
         } else {
           iBody.push(a, b2, c2)
         }
       }
       if (iR.length || iL.length) {
-        const mkParte = (indices: number[], name: string) => {
+        // El material de la banda es DoubleSide: en la hoja abierta eso hacía
+        // ver el adhesivo DESDE ADENTRO de la puerta (2026-08-14). Las partes
+        // de puerta usan un clon a una sola cara (la de afuera); el original y
+        // la parte del cuerpo mantienen DoubleSide.
+        const matPuerta = (band.material as THREE.Material).clone()
+        matPuerta.side = THREE.FrontSide
+        const mkParte = (indices: number[], name: string, soloAfuera = false) => {
           const g = new THREE.BufferGeometry()
           for (const k of Object.keys(band.geometry.attributes)) g.setAttribute(k, band.geometry.attributes[k])
           g.setIndex(indices)
-          const parte = new THREE.Mesh(g, band.material)
+          const parte = new THREE.Mesh(g, soloAfuera ? matPuerta : band.material)
           parte.name = name
           // ⚠️ transform LOCAL de la fuente y MISMO padre. Con matrixWorld el
           // offset del rig (centrado + apoyo en el piso) se aplicaba DOS veces
@@ -383,8 +394,8 @@ export function Model(props: any) {
           return parte
         }
         mkParte(iBody, 'PORSCHE_band_body')
-        if (iR.length) extraR.push(mkParte(iR, 'PORSCHE_band_door_R'))
-        if (iL.length) extraL.push(mkParte(iL, 'PORSCHE_band_door_L'))
+        if (iR.length) extraR.push(mkParte(iR, 'PORSCHE_band_door_R', true))
+        if (iL.length) extraL.push(mkParte(iL, 'PORSCHE_band_door_L', true))
         // ⚠️ el índice de `band` (la original) queda INTACTO
       }
     }
