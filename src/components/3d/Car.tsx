@@ -295,30 +295,52 @@ export function Model(props: any) {
       // curvo", referencia que dio el user) — no números fijos. Con el corte
       // hardcodeado 0.61 quedaba una tira de banda de puerta pegada al cuerpo
       // (la chapa llega a z 0.62) que se veía levitando al abrir.
-      // ⚠️ el bbox COMPLETO de la chapa no sirve (el borde es curvo y el marco
-      // de ventana estira el rango): se mide el z de la chapa SOLO a la altura
-      // donde vive la banda (y 0.24–0.44) → los filos reales de la puerta ahí.
-      const zRangeOf = (nm: string): [number, number] | null => {
-        const o = scene.getObjectByName(nm) as THREE.Mesh | undefined
-        if (!o || !o.geometry) return null
-        const g = o.geometry as THREE.BufferGeometry
-        const pos = g.attributes.position
+      // PERFIL de la chapa: para cada franja de altura (bin de y) se registra
+      // el z mínimo/máximo de la puerta → el corte SIGUE LA CURVA del filo en
+      // vez de ser una línea vertical. ⚠️ traverse(): la chapa izquierda es un
+      // GRUPO multi-material (Carpet_in + Paint_ext) SIN geometry propia —
+      // leerla como Mesh devolvía null y el lado izquierdo caía a un rango
+      // hardcodeado, por eso seguía sobresaliendo (2026-08-14).
+      const Y0 = 0.18, Y1 = 0.48, NB = 30 // bins de 1cm en la franja de la banda
+      const perfilDe = (nm: string): { min: Float64Array; max: Float64Array } | null => {
+        const root = scene.getObjectByName(nm)
+        if (!root) return null
+        const min = new Float64Array(NB).fill(Infinity)
+        const max = new Float64Array(NB).fill(-Infinity)
         const v = new THREE.Vector3()
-        let zmin = Infinity, zmax = -Infinity
-        for (let i = 0; i < pos.count; i++) {
-          v.set(pos.getX(i), pos.getY(i), pos.getZ(i))
-          o.localToWorld(v)
-          if (v.y < 0.24 || v.y > 0.44) continue // franja de la banda
-          zmin = Math.min(zmin, v.z); zmax = Math.max(zmax, v.z)
+        let hits = 0
+        root.traverse((o) => {
+          if (!(o instanceof THREE.Mesh) || !o.geometry) return
+          const pos = (o.geometry as THREE.BufferGeometry).attributes.position
+          for (let i = 0; i < pos.count; i++) {
+            v.set(pos.getX(i), pos.getY(i), pos.getZ(i))
+            o.localToWorld(v)
+            const b = Math.floor(((v.y - Y0) / (Y1 - Y0)) * NB)
+            if (b < 0 || b >= NB) continue
+            if (v.z < min[b]) min[b] = v.z
+            if (v.z > max[b]) max[b] = v.z
+            hits++
+          }
+        })
+        if (!hits) return null
+        // rellenar bins vacíos con el vecino más cercano (bordes de la chapa)
+        for (let i = 0; i < NB; i++) if (min[i] === Infinity) {
+          for (let d = 1; d < NB; d++) {
+            if (i - d >= 0 && min[i - d] !== Infinity) { min[i] = min[i - d]; max[i] = max[i - d]; break }
+            if (i + d < NB && min[i + d] !== Infinity) { min[i] = min[i + d]; max[i] = max[i + d]; break }
+          }
         }
-        return zmin === Infinity ? null : [zmin, zmax]
+        return { min, max }
       }
-      // Sin margen: el corte cae EXACTO en el filo de la chapa. Con +2cm la
-      // banda sobresalía de la puerta al abrir ("el adhesivo sigue más allá de
-      // la puerta", 2026-08-14); con menos, quedaba una tira flotando.
+      // Sin margen: el corte cae EXACTO en el filo de la chapa.
       const MARGEN = 0
-      const zR = zRangeOf('Plane171') ?? [-0.52, 0.64]
-      const zL = zRangeOf('Plane002') ?? [-0.52, 0.64]
+      const perfR = perfilDe('Plane171')
+      const perfL = perfilDe('Plane002') ?? perfilDe('Plane416')
+      const ventana = (perf: { min: Float64Array; max: Float64Array } | null, y: number): [number, number] => {
+        if (!perf) return [-0.52, 0.64]
+        const b = Math.min(NB - 1, Math.max(0, Math.floor(((y - Y0) / (Y1 - Y0)) * NB)))
+        return [perf.min[b], perf.max[b]]
+      }
       const bpos = band.geometry.attributes.position
       const bidx = band.geometry.index.array
       const cW = new THREE.Vector3()
@@ -331,7 +353,9 @@ export function Model(props: any) {
           (bpos.getZ(a) + bpos.getZ(b2) + bpos.getZ(c2)) / 3
         ).applyMatrix4(band.matrixWorld)
         const axx = Math.abs(cW.x)
-        const w = cW.x > 0 ? zR : zL
+        // ventana de z tomada del perfil de la chapa A LA ALTURA de este
+        // triángulo → el corte sigue el filo curvo de la puerta
+        const w = ventana(cW.x > 0 ? perfR : perfL, cW.y)
         const enPuertaZ = cW.z > w[0] - MARGEN && cW.z < w[1] + MARGEN
         if (enPuertaZ && axx > 0.7) {
           if (cW.x > 0) iR.push(a, b2, c2)
