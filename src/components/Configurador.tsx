@@ -493,6 +493,48 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
      antes el tab de diseños tenía su propio padding y quedaba más chato. */
   const pastillaSize = compact ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-2 text-xs sm:text-sm'
   const pastillaBase = `pointer-events-auto shrink-0 rounded-full backdrop-blur-2xl border flex items-center gap-1.5 whitespace-nowrap transition-all duration-300 ${pastillaSize}`
+  // Solo en mobile con la lista abierta: las dos pastillas van una sobre otra.
+  const apiladasEnMobile = cliente && compact && activeTab === 'cargar'
+  const btnPausa = (
+    <button
+      onClick={toggleAutoRotate}
+      className={`${pastillaBase} bg-[#0a0a0a]/75 border-white/10 text-white/70 hover:text-white hover:bg-white/10`}
+      aria-label={autoRotate ? 'Pausar rotación' : 'Reanudar rotación'}
+    >
+      {autoRotate ? (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <rect x="6" y="5" width="4" height="14" rx="1" />
+          <rect x="14" y="5" width="4" height="14" rx="1" />
+        </svg>
+      ) : (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      )}
+      <span className="font-medium tracking-wide">{autoRotate ? 'Pausar rotación' : 'Reanudar rotación'}</span>
+    </button>
+  )
+  // Puertas: solo Porsche (el Jaguar no las tiene).
+  const btnPuertas = vehicle === 'porsche' ? (
+    <button
+      onClick={toggleDoors}
+      className={`${pastillaBase} ${
+        doorsOpen
+          ? 'bg-white text-black border-white'
+          : 'bg-[#0a0a0a]/75 text-white/70 border-white/10 hover:text-white hover:bg-white/10'
+      }`}
+      aria-label={doorsOpen ? 'Cerrar puertas' : 'Abrir puertas'}
+    >
+      {/* puerta entreabierta: marco + hoja en ángulo */}
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 21V4h9" />
+        <path d="M13 4l7 3v14" />
+        <path d="M4 21h16" />
+        <circle cx="16.2" cy="12.5" r="0.6" fill="currentColor" stroke="none" />
+      </svg>
+      <span className="font-medium tracking-wide">{doorsOpen ? 'Cerrar puertas' : 'Abrir puertas'}</span>
+    </button>
+  ) : null
   const swatchCls = (active: boolean) =>
     `${compact ? 'w-5 h-5' : 'w-6 h-6'} rounded-full cursor-pointer transition-all duration-300 ${
       active
@@ -582,58 +624,17 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
             ANCHO, que es lo que sobra en apaisado, y no suman altura sobre el
             auto. `whitespace-nowrap` para que la etiqueta no parta en dos
             líneas y engorde la barra. */}
-        {(() => {
-          /* En MOBILE con la lista de diseños desplegada, las dos pastillas van
-             UNA SOBRE OTRA: la lista ocupa varias filas y al lado quedaba un
-             hueco vertical grande. Con el panel cerrado (o en desktop) siguen
-             lado a lado. */
-          const apiladas = cliente && compact && activeTab === 'cargar'
-          const pastilla = pastillaBase
-          return (
-            /* Apiladas van CENTRADAS contra el alto del panel (self-center); en
-               fila, alineadas arriba como el resto de la barra. */
-            <div className={`shrink-0 mr-2 flex ${apiladas ? 'flex-col items-start gap-1.5 self-center' : 'flex-row gap-2 self-start'}`}>
-              <button
-                onClick={toggleAutoRotate}
-                className={`${pastilla} bg-[#0a0a0a]/75 border-white/10 text-white/70 hover:text-white hover:bg-white/10`}
-                aria-label={autoRotate ? 'Pausar rotación' : 'Reanudar rotación'}
-              >
-                {autoRotate ? (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <rect x="6" y="5" width="4" height="14" rx="1" />
-                    <rect x="14" y="5" width="4" height="14" rx="1" />
-                  </svg>
-                ) : (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                )}
-                <span className="font-medium tracking-wide">{autoRotate ? 'Pausar rotación' : 'Reanudar rotación'}</span>
-              </button>
-              {/* Puertas del Porsche: abre/cierra (solo Porsche; el Jaguar no tiene). */}
-              {vehicle === 'porsche' && (
-                <button
-                  onClick={toggleDoors}
-                  className={`${pastilla} ${
-                    doorsOpen
-                      ? 'bg-white text-black border-white'
-                      : 'bg-[#0a0a0a]/75 text-white/70 border-white/10 hover:text-white hover:bg-white/10'
-                  }`}
-                  aria-label={doorsOpen ? 'Cerrar puertas' : 'Abrir puertas'}
-                >
-                  {/* puerta entreabierta: marco + hoja en ángulo */}
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M4 21V4h9" />
-                    <path d="M13 4l7 3v14" />
-                    <path d="M4 21h16" />
-                    <circle cx="16.2" cy="12.5" r="0.6" fill="currentColor" stroke="none" />
-                  </svg>
-                  <span className="font-medium tracking-wide">{doorsOpen ? 'Cerrar puertas' : 'Abrir puertas'}</span>
-                </button>
-              )}
-            </div>
-          )
-        })()}
+        {/* IZQUIERDA: pausar. En MOBILE la acompaña "puertas" (apiladas cuando
+            la lista está desplegada, que si no dejaba un hueco vertical); en
+            DESKTOP "puertas" se va a la DERECHA del selector de diseños.
+            self-center: las pastillas quedan centradas contra el alto del
+            panel en vez de pegadas arriba. */}
+        <div className={`shrink-0 mr-2 self-center flex ${
+          apiladasEnMobile ? 'flex-col items-start gap-1.5' : 'flex-row gap-2'
+        }`}>
+          {btnPausa}
+          {compact && btnPuertas}
+        </div>
         {/* Con "Diseños" CERRADO el contenedor se vuelve transparente y sin
             padding: así el botón queda como una pastilla más, del mismo tamaño
             que las otras dos (antes el marco del panel le sumaba alto). */}
@@ -942,12 +943,15 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
             </div>
           )}
         </div>
+        {/* DESKTOP: "Abrir puertas" va a la DERECHA del selector de diseños
+            (en mobile ya viaja con la pastilla de pausa, arriba a la izquierda). */}
+        {!compact && btnPuertas && <div className="shrink-0 ml-2 self-center flex">{btnPuertas}</div>}
         {/* Guardar + Compartir: solo en el editor. */}
         {!cliente && (
           <>
             <button
               onClick={() => setActiveTab(activeTab === 'guardar' ? null : 'guardar')}
-              className={`pointer-events-auto shrink-0 self-start ${compact ? 'w-8 h-8' : 'w-10 h-10'} ml-2 rounded-full backdrop-blur-2xl border border-white/10 flex items-center justify-center transition-all duration-300 ${
+              className={`pointer-events-auto shrink-0 self-center ${compact ? 'w-8 h-8' : 'w-10 h-10'} ml-2 rounded-full backdrop-blur-2xl border border-white/10 flex items-center justify-center transition-all duration-300 ${
                 activeTab === 'guardar' ? 'bg-white text-black' : 'bg-[#0a0a0a]/75 text-white/70 hover:text-white hover:bg-white/10'
               }`}
               title="Guardar perfil de colores"
@@ -959,7 +963,7 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
             </button>
             <button
               onClick={copiarLinkCliente}
-              className={`pointer-events-auto shrink-0 self-start ${compact ? 'w-8 h-8' : 'w-10 h-10'} ml-2 rounded-full backdrop-blur-2xl border flex items-center justify-center transition-all duration-300 ${
+              className={`pointer-events-auto shrink-0 self-center ${compact ? 'w-8 h-8' : 'w-10 h-10'} ml-2 rounded-full backdrop-blur-2xl border flex items-center justify-center transition-all duration-300 ${
                 linkCopiado ? 'bg-white text-black border-white' : 'bg-[#0a0a0a]/75 text-white/70 border-white/10 hover:text-white hover:bg-white/10'
               }`}
               title={
