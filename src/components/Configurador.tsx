@@ -298,6 +298,13 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
     if (perfilActivo) params.set('p', perfilActivo)
     // Las puertas son del Porsche; con el Jaguar el estado no significa nada.
     if (doorsOpen && vehicle === 'porsche') params.set('puertas', '1')
+    /* WhatsApp / iMessage cachean la preview por URL EXACTA y para siempre: si
+       esa URL ya se pegó alguna vez (aunque no se haya llegado a enviar),
+       vuelven a mostrar lo que vieron entonces — logo viejo, textos viejos —
+       aunque el servidor ya mande otra cosa. Un sufijo distinto en cada copia
+       la convierte en una URL nueva, así la preview siempre sale fresca.
+       `v` no hace nada en la app: se ignora al leer los parámetros. */
+    params.set('v', String(Date.now()).slice(-6))
     const qs = params.toString()
     const url = `${window.location.origin}/ver${qs ? `?${qs}` : ''}`
     let copiado = false
