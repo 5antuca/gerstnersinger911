@@ -638,7 +638,9 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
           apiladasEnMobile ? 'flex-col items-start gap-1.5' : 'flex-row gap-2'
         }`}>
           {btnPausa}
-          {compact && btnPuertas}
+          {/* "Puertas" acompaña a "pausar" en MOBILE y SIEMPRE en el editor.
+              Solo se va a la derecha en el visor de clientes en desktop. */}
+          {(compact || !cliente) && btnPuertas}
         </div>
         {/* Con "Diseños" CERRADO el contenedor se vuelve transparente y sin
             padding: así el botón queda como una pastilla más, del mismo tamaño
@@ -948,9 +950,11 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
             </div>
           )}
         </div>
-        {/* DESKTOP: "Abrir puertas" va a la DERECHA del selector de diseños
-            (en mobile ya viaja con la pastilla de pausa, arriba a la izquierda). */}
-        {!compact && btnPuertas && <div className="shrink-0 ml-2 self-center flex">{btnPuertas}</div>}
+        {/* VISOR en desktop: "Abrir puertas" va a la DERECHA del selector de
+            diseños. En el editor y en mobile queda a la izquierda, con pausar. */}
+        {!compact && cliente && btnPuertas && (
+          <div className="shrink-0 ml-2 self-center flex">{btnPuertas}</div>
+        )}
         {/* Guardar + Compartir: solo en el editor. */}
         {!cliente && (
           <>
