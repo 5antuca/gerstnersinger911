@@ -247,7 +247,13 @@ function useMediaQuery(query: string) {
 
 // Preset con el que arranca el EDITOR. Si no existe (renombrado/borrado), el
 // configurador abre en sus colores por defecto sin romper nada.
-const PERFIL_INICIAL_EDITOR = 'Franco Bitt'
+/* Preset con el que arranca el EDITOR. Se prueban EN ORDEN y gana el primero
+   que exista. Va una lista y no un nombre suelto porque el perfil se renombró
+   de "Franco Bitt" a "Franco" (2026-08-15) y el nombre viejo hardcodeado dejaba
+   al editor SIN preset aplicado: por eso el link copiado salía sin `?p=`.
+   Si no existe ninguno, el editor abre en los colores por defecto sin romperse.
+   ⚠️ Esto NO afecta el visor de clientes: /ver se guía por el `?p=` del link. */
+const PERFILES_INICIALES_EDITOR = ['Franco', 'Franco Bitt']
 
 /*
   El configurador se renderiza en DOS rutas con el mismo 3D:
@@ -274,6 +280,9 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
   // nube tapan lo borrado) y se sube lo que la nube no tenga.
   type Perfil = { name: string; cfg: { paintColor: string; paintFinish?: number; decalColor: string; decalFinish?: number; interiorTint: string; interiorExact?: string | null; interiorFinish?: number; stripeColor?: string; gaugeColor?: string; rimColor: string; rimFinish?: number; valleyColor: string; valleyFinish?: number; environment: string; vehicle?: string; jaguarVariant?: string }; updatedAt?: number }
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
+  // Primero de PERFILES_INICIALES_EDITOR que exista en la lista (o ninguno).
+  const perfilInicial = (lista: Perfil[]) =>
+    PERFILES_INICIALES_EDITOR.map((n) => lista.find((p) => p.name === n)).find(Boolean)
   const [nombrePerfil, setNombrePerfil] = useState('')
   // 'cloud' = sincronizado con la nube; 'local' = solo este navegador.
   const [syncEstado, setSyncEstado] = useState<'cloud' | 'local'>('local')
@@ -395,19 +404,22 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
     setNombrePerfil(p.name)
   }
   /* PRESET DE ARRANQUE. En el visor lo define el link (`?p=<preset>`); en el
-     editor es siempre "Franco Bitt". Se lee de window.location y no de
-     useSearchParams para no forzar un Suspense ni sacar a /ver del prerender.
-     Espera a que lleguen los presets: entran en dos tandas (localStorage
-     primero, nube después), así que mientras no encuentre el nombre se vuelve
-     a intentar en cada actualización de la lista. */
+     editor, el primero de PERFILES_INICIALES_EDITOR que exista. Se lee de
+     window.location y no de useSearchParams para no forzar un Suspense ni sacar
+     a /ver del prerender. Espera a que lleguen los presets: entran en dos
+     tandas (localStorage primero, nube después), así que mientras no encuentre
+     el nombre se vuelve a intentar en cada actualización de la lista. */
   const perfilInicialAplicado = useRef(false)
   useEffect(() => {
     if (perfilInicialAplicado.current || perfiles.length === 0) return
-    const buscado = cliente
-      ? new URLSearchParams(window.location.search).get('p')
-      : PERFIL_INICIAL_EDITOR
-    if (!buscado) { perfilInicialAplicado.current = true; return }
-    const p = perfiles.find((x) => x.name === buscado)
+    let p: Perfil | undefined
+    if (cliente) {
+      const buscado = new URLSearchParams(window.location.search).get('p')
+      if (!buscado) { perfilInicialAplicado.current = true; return }
+      p = perfiles.find((x) => x.name === buscado)
+    } else {
+      p = perfilInicial(perfiles)
+    }
     if (!p) return // puede estar en la tanda de la nube, que llega después
     cargarPerfil(p)
     perfilInicialAplicado.current = true
@@ -437,13 +449,15 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
     } catch { /* sin espacio: la nube guarda su copia igual */ }
     fetch('/api/perfiles', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }).catch(() => { /* tombstone pendiente */ })
   }
-  // Selección de vehículo: Porsche → carga el perfil "Franco Bitt"; Jaguar →
+  // Selección de vehículo: Porsche → carga el preset de arranque; Jaguar →
   // arranca en gris (su config default).
   const seleccionarVehiculo = (id: VehicleId) => {
     setVehicle(id)
     setActiveTab(null)
     if (id === 'porsche') {
-      const franco = perfiles.find((p) => p.name === 'Franco Bitt')
+      // Misma lista que el arranque: antes tenía "Franco Bitt" suelto y quedó
+      // sin efecto al renombrarse el perfil.
+      const franco = perfilInicial(perfiles)
       if (franco) cargarPerfil(franco)
     } else if (id === 'jaguar') {
       // Al elegir el Jaguar arranca en el CONFIGURABLE; el preset "Titi" lo pasa a la variante negra.
