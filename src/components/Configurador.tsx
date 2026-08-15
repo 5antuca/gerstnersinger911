@@ -578,11 +578,16 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
             auto. `whitespace-nowrap` para que la etiqueta no parta en dos
             líneas y engorde la barra. */}
         {(() => {
-          const pastilla = `pointer-events-auto shrink-0 self-start mr-2 rounded-full backdrop-blur-2xl border flex items-center gap-1.5 whitespace-nowrap transition-all duration-300 ${
+          /* En MOBILE con la lista de diseños desplegada, las dos pastillas van
+             UNA SOBRE OTRA: la lista ocupa varias filas y al lado quedaba un
+             hueco vertical grande. Con el panel cerrado (o en desktop) siguen
+             lado a lado. */
+          const apiladas = cliente && compact && activeTab === 'cargar'
+          const pastilla = `pointer-events-auto shrink-0 rounded-full backdrop-blur-2xl border flex items-center gap-1.5 whitespace-nowrap transition-all duration-300 ${
             compact ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-2 text-xs sm:text-sm'
           }`
           return (
-            <>
+            <div className={`shrink-0 self-start mr-2 flex ${apiladas ? 'flex-col items-start gap-1.5' : 'flex-row gap-2'}`}>
               <button
                 onClick={toggleAutoRotate}
                 className={`${pastilla} bg-[#0a0a0a]/75 border-white/10 text-white/70 hover:text-white hover:bg-white/10`}
@@ -621,7 +626,7 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
                   <span className="font-medium tracking-wide">{doorsOpen ? 'Cerrar puertas' : 'Abrir puertas'}</span>
                 </button>
               )}
-            </>
+            </div>
           )
         })()}
         <div className={`pointer-events-auto bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 rounded-3xl ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} shadow-2xl max-w-[88vw] overflow-x-auto`}>
@@ -645,7 +650,7 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
             ))}
           </div>
           )}
-          {/* Visor en MOBILE (viewport bajo): una sola pestaña "Presets",
+          {/* Visor en MOBILE (viewport bajo): una sola pestaña "Diseños",
               cerrada por defecto. Ahí la fila envuelta de presets tapaba media
               pantalla; en desktop entra bien y va siempre visible.
               Este botón solo puede setear 'cargar': ningún panel de edición. */}
@@ -658,7 +663,7 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
                 }`}
                 aria-expanded={activeTab === 'cargar'}
               >
-                Presets
+                Diseños
                 <svg
                   width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                   strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
@@ -868,12 +873,12 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
           )}
 
           {/* Editor: se abre con el tab "Cargar". Visor: siempre visible en
-              desktop, y en mobile detrás de la pestaña "Presets". */}
+              desktop, y en mobile detrás de la pestaña "Diseños". */}
           {(activeTab === 'cargar' || (cliente && !compact)) && (
             <div className="flex items-center justify-center gap-2 px-2 pt-3 pb-1 flex-wrap max-w-[600px]">
               {perfilesVisibles.length === 0 && (
                 <span className="text-white/40 text-xs py-1">
-                  {cliente ? 'Todavía no hay modelos para mostrar.' : 'No hay perfiles guardados — usá el botón 💾 para crear uno.'}
+                  {cliente ? 'Todavía no hay diseños para mostrar.' : 'No hay perfiles guardados — usá el botón 💾 para crear uno.'}
                 </span>
               )}
               {perfilesVisibles.map((p) => (
