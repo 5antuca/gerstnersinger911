@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   // (logo blanco sobre el fondo oscuro del studio) y /ver la hereda.
   openGraph: {
     title: "GerstnerWerks",
-    description: "Configurador 3D",
+    description: "Visualizador 3D",
     type: "website",
   },
   twitter: { card: "summary_large_image" },
