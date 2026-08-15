@@ -488,6 +488,11 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
   // en 0 (justify-center con overflow deja la punta izquierda inalcanzable).
   const panelRow = `w-max mx-auto flex items-center ${compact ? 'gap-3 px-1 pt-2' : 'gap-5 px-2 pt-3'} pb-1`
   const dividerCls = `w-px ${compact ? 'h-14' : 'h-20'} bg-white/10 shrink-0`
+  /* Medidas de las pastillas de la barra inferior. Una sola fuente para que
+     "Pausar rotación", "Abrir puertas" y "Diseños" midan EXACTAMENTE lo mismo:
+     antes el tab de diseños tenía su propio padding y quedaba más chato. */
+  const pastillaSize = compact ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-2 text-xs sm:text-sm'
+  const pastillaBase = `pointer-events-auto shrink-0 rounded-full backdrop-blur-2xl border flex items-center gap-1.5 whitespace-nowrap transition-all duration-300 ${pastillaSize}`
   const swatchCls = (active: boolean) =>
     `${compact ? 'w-5 h-5' : 'w-6 h-6'} rounded-full cursor-pointer transition-all duration-300 ${
       active
@@ -583,11 +588,11 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
              hueco vertical grande. Con el panel cerrado (o en desktop) siguen
              lado a lado. */
           const apiladas = cliente && compact && activeTab === 'cargar'
-          const pastilla = `pointer-events-auto shrink-0 rounded-full backdrop-blur-2xl border flex items-center gap-1.5 whitespace-nowrap transition-all duration-300 ${
-            compact ? 'px-2.5 py-1 text-[11px]' : 'px-3.5 py-2 text-xs sm:text-sm'
-          }`
+          const pastilla = pastillaBase
           return (
-            <div className={`shrink-0 self-start mr-2 flex ${apiladas ? 'flex-col items-start gap-1.5' : 'flex-row gap-2'}`}>
+            /* Apiladas van CENTRADAS contra el alto del panel (self-center); en
+               fila, alineadas arriba como el resto de la barra. */
+            <div className={`shrink-0 mr-2 flex ${apiladas ? 'flex-col items-start gap-1.5 self-center' : 'flex-row gap-2 self-start'}`}>
               <button
                 onClick={toggleAutoRotate}
                 className={`${pastilla} bg-[#0a0a0a]/75 border-white/10 text-white/70 hover:text-white hover:bg-white/10`}
@@ -629,7 +634,14 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
             </div>
           )
         })()}
-        <div className={`pointer-events-auto bg-[#0a0a0a]/75 backdrop-blur-2xl border border-white/10 rounded-3xl ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} shadow-2xl max-w-[88vw] overflow-x-auto`}>
+        {/* Con "Diseños" CERRADO el contenedor se vuelve transparente y sin
+            padding: así el botón queda como una pastilla más, del mismo tamaño
+            que las otras dos (antes el marco del panel le sumaba alto). */}
+        <div className={`pointer-events-auto backdrop-blur-2xl rounded-3xl max-w-[88vw] overflow-x-auto ${
+          cliente && compact && activeTab !== 'cargar'
+            ? 'bg-transparent'
+            : `bg-[#0a0a0a]/75 border border-white/10 shadow-2xl ${compact ? 'px-2 py-1.5' : 'px-3 py-2'}`
+        }`}>
           {/* fila de tabs — NO se renderiza en modo cliente: es la única puerta
               de entrada a los paneles de edición. */}
           {!cliente && (
@@ -658,8 +670,11 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
             <div className="w-max mx-auto flex gap-1">
               <button
                 onClick={() => setActiveTab(activeTab === 'cargar' ? null : 'cargar')}
-                className={`${compact ? 'px-3 py-1 text-[11px]' : 'px-4 py-1.5 text-xs sm:text-sm'} rounded-full font-medium tracking-wide transition-all duration-300 whitespace-nowrap flex items-center gap-1.5 ${
-                  activeTab === 'cargar' ? 'bg-white text-black' : 'text-white/65 hover:text-white hover:bg-white/10'
+                /* Misma pastilla que "Pausar rotación" / "Abrir puertas". */
+                className={`${pastillaBase} font-medium tracking-wide ${
+                  activeTab === 'cargar'
+                    ? 'bg-white text-black border-white'
+                    : 'bg-[#0a0a0a]/75 text-white/70 border-white/10 hover:text-white hover:bg-white/10'
                 }`}
                 aria-expanded={activeTab === 'cargar'}
               >
