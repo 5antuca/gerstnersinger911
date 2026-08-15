@@ -79,7 +79,7 @@ function Form() {
 
   return (
     <form onSubmit={porClave} className="w-full max-w-[280px] flex flex-col items-center gap-4">
-      <Image src="/img/logopage.webp" alt="GerstnerWerks" width={180} height={60} className="w-[130px] h-auto object-contain mb-2" priority />
+      <Image src="/img/logo-werks.png" alt="GerstnerWerks" width={180} height={60} className="w-[130px] h-auto object-contain mb-2" priority />
       <input
         type="password"
         value={password}

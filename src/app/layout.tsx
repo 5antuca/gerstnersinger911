@@ -21,12 +21,23 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  // metadataBase: sin esto Next no arma la URL ABSOLUTA de la imagen de
+  // preview, y WhatsApp / iMessage no la levantan.
+  metadataBase: new URL("https://studio.gerstnerwerks.com"),
   title: "GerstnerWerks Configurator",
   description: "Configurador 3D Privado - GerstnerWerks",
   robots: {
     index: false,
     follow: false,
   },
+  // Preview al pegar el link. La imagen la genera src/app/opengraph-image.tsx
+  // (logo blanco sobre el fondo oscuro del studio) y /ver la hereda.
+  openGraph: {
+    title: "GerstnerWerks",
+    description: "Configurador 3D",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({

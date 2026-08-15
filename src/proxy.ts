@@ -21,7 +21,10 @@ import { COOKIE, tokenDe } from '@/lib/auth'
   igual pero el editor no está protegido.
 */
 
-const PUBLICO = ['/ver', '/login', '/api/login', '/api/recuperar']
+// ⚠️ /opengraph-image va público a la fuerza: es la imagen de preview del link.
+// Sin esto, al configurar STUDIO_PASSWORD el proxy la mandaba al login y
+// WhatsApp/iMessage se quedaban sin imagen (no tienen la cookie).
+const PUBLICO = ['/ver', '/login', '/api/login', '/api/recuperar', '/opengraph-image']
 
 export async function proxy(req: NextRequest) {
   const clave = process.env.STUDIO_PASSWORD

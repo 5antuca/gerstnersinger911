@@ -208,7 +208,7 @@ function LoadingScreen() {
     >
       {/* Logo */}
       <Image
-        src="/img/logopage.webp"
+        src="/img/logo-werks.png"
         alt="Gerstner Werks"
         width={120}
         height={40}
@@ -515,7 +515,7 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
         style={{ background: 'radial-gradient(ellipse at top, #3a3c42 0%, #1e2024 40%, #0e0f12 100%)' }}
       >
         <Image
-          src="/img/logopage.webp"
+          src="/img/logo-werks.png"
           alt="Gerstner Werks"
           width={110}
           height={37}
@@ -551,7 +551,7 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
         {/* Logo */}
         <div className="pointer-events-auto shrink-0">
           <Image
-            src="/img/logopage.webp"
+            src="/img/logo-werks.png"
             alt="Gerstner Werks Logo"
             width={180}
             height={60}
