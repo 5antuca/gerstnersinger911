@@ -620,6 +620,8 @@ export function Model(props: any) {
     const SEAT_OUTBOARD = 0.055 // butaca acompañante (der; m desde el centro del asiento)
     const SEAT_OUTBOARD_L = 0.07 // butaca conductor (izq)
     const REAR_OUTBOARD = 0.06 // respaldos + almohadón traseros
+    // Corrimiento del origen local del tablero respecto del mundo (medido).
+    const DASH_OFFSET = 0.016
     // GLTFLoader saca los puntos de los nombres: 'Cube.006' → 'Cube006'.
     const TARGETS: { test: RegExp; axis: 'x' | 'y' | 'z'; centers: (bb: THREE.Box3, mesh: THREE.Mesh) => number[] }[] = [
       // Butacas delanteras: par corrido hacia afuera. Medido en vivo: en AMBAS
@@ -648,6 +650,13 @@ export function Model(props: any) {
       { test: /^RESPALDO_editar001/, axis: 'x', centers: (bb) => pair((bb.min.x + bb.max.x) / 2 - REAR_OUTBOARD) },
       { test: /^RESPALDO_editar/, axis: 'x', centers: (bb) => pair((bb.min.x + bb.max.x) / 2 + REAR_OUTBOARD) },
       { test: /^Plane167/, axis: 'x', centers: () => [...pair(-0.29 - REAR_OUTBOARD), ...pair(0.28 + REAR_OUTBOARD)] },
+      /* TABLERO: la banda trenzada que cruza todo el ancho, arriba de los
+         pedales (`Dashboard_weave_layer`). Lleva un par por lado, enfrentado a
+         cada butaca, como en las fotos Singer de referencia (2026-08-17).
+         Su eje local x = ancho del auto 1:1, con un offset de −0.016 respecto
+         del mundo (medido en vivo) → el centro en mundo ±0.40 cae en local
+         ±0.40 − 0.016. */
+      { test: /^Dashboard_weave_layer/, axis: 'x', centers: () => [...pair(-0.40 - DASH_OFFSET), ...pair(0.40 - DASH_OFFSET)] },
     ]
 
     const esWeave = (m: THREE.Material | null | undefined) =>
