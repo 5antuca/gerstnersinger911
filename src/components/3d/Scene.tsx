@@ -6,7 +6,6 @@ import {
   OrbitControls,
   ContactShadows,
   PerformanceMonitor,
-  GradientTexture,
 } from '@react-three/drei'
 import { Component, Suspense, useState, type ReactNode } from 'react'
 import { Model as Car } from './Car'
@@ -43,6 +42,26 @@ class BarreraEntorno extends Component<
   render() {
     return this.state.fallo ? this.props.fallback : this.props.children
   }
+}
+
+/*
+  HDRI de cada iluminación, SERVIDOS DESDE EL REPO (public/env).
+
+  Antes se usaba `preset=` de drei, que baja el archivo de un CDN de terceros
+  en vivo. El 2026-08-17 ese CDN se cayó (daño colateral de un incidente de
+  GitHub) y, como TODOS los presets guardados usan 'city', se cayó el studio
+  entero y los links de clientes. Ahora los archivos viven acá: son los mismos
+  bytes que servía drei (bajados por jsDelivr, idénticos a los de Poly Haven).
+*/
+const HDRI: Record<string, string> = {
+  city: '/env/potsdamer_platz_1k.hdr',
+  studio: '/env/studio_small_03_1k.hdr',
+  warehouse: '/env/empty_warehouse_01_1k.hdr',
+  sunset: '/env/venice_sunset_1k.hdr',
+  forest: '/env/forest_slope_1k.hdr',
+  apartment: '/env/lebombo_1k.hdr',
+  real: '/env/forest.hdr',
+  v5: '/env/sunset_v5.hdr',
 }
 
 // Escena model-agnostic. Look calcado del Material Preview de Blender:
@@ -87,18 +106,11 @@ export function Scene() {
         onIncline={() => setDpr(1.5)}
       />
 
-      {/* Fondo: con el entorno "real" el fondo es el propio forest.hdr blureado
-          (igual que el setup FONDO_CAMARA del .blend). Para el resto de los
-          presets se mantiene el domo gris con degradé. */}
+      {/* Fondo: el propio HDRI blureado, en TODAS las iluminaciones (antes solo
+          en "real"; el resto tenía un domo gris fijo que no acompañaba). Así el
+          fondo toma el color del entorno elegido, como el FONDO_CAMARA del
+          .blend. El <color> queda de base para el instante previo a que cargue. */}
       <color attach="background" args={['#131316']} />
-      {environment !== 'real' && (
-        <mesh scale={60} renderOrder={-1}>
-          <sphereGeometry args={[1, 64, 64]} />
-          <meshBasicMaterial side={THREE.BackSide} depthWrite={false} toneMapped={false}>
-            <GradientTexture stops={[0, 0.5, 1]} colors={['#0e0e11', '#2c2d33', '#121216']} size={1024} />
-          </meshBasicMaterial>
-        </mesh>
-      )}
 
       {/* Reflejos de estudio SOLO para el Jaguar (el Porsche queda HDRI puro).
           El forest.hdr es difuso y AgX comprime los reflejos → la pintura metálica
@@ -136,44 +148,33 @@ export function Scene() {
             Preset de drei elegido por el usuario desde el selector "Entorno".
             environmentIntensity 1.0 = strength 1.0 del World.
             key fuerza el remount al cambiar de preset para recargar el HDRI. */}
-        {environment === 'real' ? (
-          /* forest.hdr REAL del .blend de producción, strength 1.0, y de fondo el
-             mismo HDRI blureado (= FONDO_CAMARA del World de Blender). */
-          <Environment
-            key="real"
-            files="/env/forest.hdr"
-            environmentIntensity={1.0}
-            background
-            backgroundBlurriness={0.25}
-          />
-        ) : environment === 'v5' ? (
-          /* HDRI sunset.exr REAL de Blender → matchea la Vista Materiales de v5
-             (misma intensidad 1.618 + rotación que el studiolight). */
-          <Environment
-            key="v5"
-            files="/env/sunset_v5.hdr"
-            environmentIntensity={2.0}
-            environmentRotation={[0, -2.559, 0]}
-          />
-        ) : (
-          /* ⚠️ Los presets de drei bajan el HDRI de un CDN EXTERNO. El
-             2026-08-17 ese CDN devolvió 503 y, como el error sube por el árbol
-             del Canvas, la página entera quedaba en blanco ("This page
-             couldn't load") — con TODOS los presets guardados en 'city', el
-             studio y los links de clientes se caían enteros por un servicio
-             de terceros. La barrera de abajo lo contiene: si el HDRI remoto
-             falla, se cae al forest.hdr LOCAL y el auto se ve igual de bien.
-             `key` con el entorno = reintenta el remoto al cambiar de opción. */
-          <BarreraEntorno
-            key={environment}
-            fallback={<Environment files="/env/forest.hdr" environmentIntensity={1.0} />}
-          >
+        {/* HDRI del entorno: ilumina, da los reflejos Y es el fondo blureado.
+            Todos los archivos son LOCALES (public/env) — ver el mapa HDRI de
+            arriba y por qué se dejó de usar el CDN de drei.
+            `key` fuerza el remount al cambiar de opción para recargar el HDRI. */}
+        <BarreraEntorno
+          key={environment}
+          fallback={
             <Environment
-              preset={environment as Exclude<typeof environment, 'v5' | 'real'>}
+              files={HDRI.real}
               environmentIntensity={1.0}
+              background
+              backgroundBlurriness={0.6}
             />
-          </BarreraEntorno>
-        )}
+          }
+        >
+          <Environment
+            files={HDRI[environment] ?? HDRI.real}
+            /* v5 replica el studiolight de Blender: más intenso y rotado. */
+            environmentIntensity={environment === 'v5' ? 2.0 : 1.0}
+            environmentRotation={environment === 'v5' ? [0, -2.559, 0] : [0, 0, 0]}
+            background
+            /* "real" mantiene su blur suave calibrado contra el .blend; el
+               resto va más difuso para que el fondo no compita con el auto. */
+            backgroundBlurriness={environment === 'real' ? 0.25 : 0.6}
+          />
+        </BarreraEntorno>
+
       </Suspense>
 
       <OrbitControls
