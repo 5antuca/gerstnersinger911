@@ -595,7 +595,14 @@ export function Model(props: any) {
         .join('\n')
     }
     el.addEventListener('dblclick', onDbl)
-    return () => el.removeEventListener('dblclick', onDbl)
+    return () => {
+      el.removeEventListener('dblclick', onDbl)
+      // ⚠️ Resetear el guard. Antes solo se sacaba el listener y el flag
+      // quedaba en true: al volver a montar (React monta→desmonta→monta en
+      // desarrollo, o al cambiar de vehículo/cámara) el guard cortaba antes de
+      // enganchar y el marcador quedaba MUERTO — no marcaba ni el vidrio.
+      el.__marcadorOn = false
+    }
   }, [scene, gl, camera])
 
   // FRANJAS del tejido (feature web). Un PAR de franjas finas verticales por
