@@ -623,10 +623,10 @@ export function Model(props: any) {
     // Corrimiento del origen local del tablero respecto del mundo (medido).
     const DASH_OFFSET = 0.016
     /* Distancia del par de franjas del tablero al centro del auto, en metros.
-       Corrido hacia los LATERALES a pedido (2026-08-17: de 0.40 a 0.55). La
-       banda llega hasta ±0.67, así que 0.55 deja el par bien afuera sin que
-       se caiga del borde (el par ocupa ±0.02 alrededor del centro). */
-    const DASH_X = 0.55
+       Calibrado a ojo con el user (2026-08-17): 0.40 quedaba muy al centro,
+       0.55 se pasaba para afuera → 0.48. La banda llega hasta ±0.67 y el par
+       ocupa ±0.02 alrededor del centro, así que sobra margen al borde. */
+    const DASH_X = 0.48
     // GLTFLoader saca los puntos de los nombres: 'Cube.006' → 'Cube006'.
     const TARGETS: { test: RegExp; axis: 'x' | 'y' | 'z'; centers: (bb: THREE.Box3, mesh: THREE.Mesh) => number[] }[] = [
       // Butacas delanteras: par corrido hacia afuera. Medido en vivo: en AMBAS
