@@ -855,10 +855,18 @@ export function Model(props: any) {
           const t = new THREE.Color(interiorTint)
           m.color.setRGB(orig.r * t.r, orig.g * t.g, orig.b * t.b)
         }
-        // acabado: 0 = original del GLB; 1 = cuero metalizado
+        /* Acabado del interior: 0 = original del GLB; 1 = CUERO BRILLANTE.
+           Antes subía `metalness` a 0.9 y el cuero terminaba pareciendo metal
+           (2026-08-17: pedido explícito de que NO refleje metalizado). El cuero
+           es un dieléctrico: su brillo sale de bajar la RUGOSIDAD, no de
+           volverlo metálico. metalness queda en 0 y el reflejo del entorno se
+           levanta un poco con envMapIntensity para que se note la lustrada. */
         const or = m.userData.__origRough as number
-        m.metalness = interiorFinish * 0.9
-        m.roughness = or * (1 - interiorFinish) + 0.3 * interiorFinish
+        if (m.userData.__origEnv === undefined) m.userData.__origEnv = m.envMapIntensity
+        const oe = m.userData.__origEnv as number
+        m.metalness = 0
+        m.roughness = or * (1 - interiorFinish) + 0.14 * interiorFinish
+        m.envMapIntensity = oe * (1 + 0.6 * interiorFinish)
         m.needsUpdate = true
       }
       // Esfera del RELOJ CENTRAL (Rev meter.001): selector propio. 'auto' =

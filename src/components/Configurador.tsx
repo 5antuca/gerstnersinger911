@@ -138,6 +138,7 @@ function ColorPickerRGB({
   onFinish,
   size = 150,
   satin = false,
+  finMax = 'Metal',
 }: {
   hex: string
   finish?: number
@@ -146,6 +147,9 @@ function ColorPickerRGB({
   onFinish?: (v: number) => void
   size?: number
   satin?: boolean
+  // Rótulo del extremo derecho del slider. El interior NO va a "Metal": el
+  // cuero es dieléctrico y su acabado es mate ↔ brillante (2026-08-17).
+  finMax?: string
 }) {
   const [hsva, setHsva] = useState<HsvaColor>(() => ({ ...hexToHsva(hex), a: 1 }))
   return (
@@ -172,7 +176,7 @@ function ColorPickerRGB({
       {/* Acabado: mate (izq) ↔ metálico (der). min-w-0 en el range: sin él su
           min-width intrínseco (~130px) infla la fila y desborda el panel en mobile. */}
       {onFinish && (
-      <div className="flex flex-col items-center gap-0.5" style={{ width: size + 44 }} title={satin ? 'Acabado: mate ↔ satín ↔ metálico' : 'Acabado: mate ↔ metálico'}>
+      <div className="flex flex-col items-center gap-0.5" style={{ width: size + 44 }} title={satin ? `Acabado: mate ↔ satín ↔ ${finMax.toLowerCase()}` : `Acabado: mate ↔ ${finMax.toLowerCase()}`}>
         <div className="flex items-center gap-1.5 w-full">
           <span className="text-[8px] text-white/40 uppercase tracking-wider shrink-0">Mate</span>
           <div className="relative flex-1 min-w-0">
@@ -188,7 +192,7 @@ function ColorPickerRGB({
             {/* tick del satín en el centro (paintFinish 0.5) */}
             {satin && <span className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-2 bg-white/50" />}
           </div>
-          <span className="text-[8px] text-white/40 uppercase tracking-wider shrink-0">Metal</span>
+          <span className="text-[8px] text-white/40 uppercase tracking-wider shrink-0">{finMax}</span>
         </div>
         {satin && <span className="text-[7px] text-white/35 uppercase tracking-[0.2em] leading-none">Satín</span>}
       </div>
@@ -765,7 +769,7 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
             <div className={panelRow}>
               <div className="flex items-center gap-3">
                 <span className={popTitle + ' !mb-0 shrink-0'}>Interior (cuero)</span>
-                <ColorPickerRGB hex={interiorTint} finish={interiorFinish} onHex={setInteriorTint} onFinish={setInteriorFinish} size={wheelSize} />
+                <ColorPickerRGB hex={interiorTint} finish={interiorFinish} onHex={setInteriorTint} onFinish={setInteriorFinish} size={wheelSize} finMax="Brillante" />
               </div>
             </div>
           )}
@@ -797,7 +801,7 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
                 {/* La rueda aplica el color EXACTO (setInteriorExact). El
                     multiplicador viejo queda solo para los presets ya
                     guardados y los 4 acabados de arriba. */}
-                <ColorPickerRGB hex={interiorExact ?? interiorTint} finish={interiorFinish} onHex={setInteriorExact} onFinish={setInteriorFinish} size={wheelSize} />
+                <ColorPickerRGB hex={interiorExact ?? interiorTint} finish={interiorFinish} onHex={setInteriorExact} onFinish={setInteriorFinish} size={wheelSize} finMax="Brillante" />
               </div>
               <div className={dividerCls} />
               <div className="flex items-center gap-3">
