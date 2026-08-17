@@ -8,7 +8,7 @@ import {
   PerformanceMonitor,
   GradientTexture,
 } from '@react-three/drei'
-import { Suspense, useState } from 'react'
+import { Component, Suspense, useState, type ReactNode } from 'react'
 import { Model as Car } from './Car'
 import { useConfiguratorStore } from '@/store/useConfiguratorStore'
 import * as THREE from 'three'
@@ -17,6 +17,33 @@ import { RectAreaLightUniformsLib } from 'three-stdlib'
 // Inicializa las LTC textures que necesitan los rectAreaLight (softboxes de estudio
 // del Jaguar). Sin esto los rectAreaLight no iluminan. Idempotente.
 RectAreaLightUniformsLib.init()
+
+/*
+  Barrera de error para el HDRI del entorno.
+
+  Los presets de drei (`city`, `sunset`, `warehouse`…) bajan el archivo de un
+  CDN de terceros. Si ese CDN falla, el error sube por el árbol del Canvas y se
+  lleva puesta TODA la página. Con esto, un HDRI caído solo degrada la
+  iluminación: se usa el forest.hdr local y el configurador sigue andando.
+
+  Tiene que ser un componente de CLASE: es la única forma de capturar errores
+  de render en React.
+*/
+class BarreraEntorno extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { fallo: boolean }
+> {
+  state = { fallo: false }
+  static getDerivedStateFromError() {
+    return { fallo: true }
+  }
+  componentDidCatch(error: unknown) {
+    console.warn('[entorno] HDRI remoto no disponible, usando el local:', error)
+  }
+  render() {
+    return this.state.fallo ? this.props.fallback : this.props.children
+  }
+}
 
 // Escena model-agnostic. Look calcado del Material Preview de Blender:
 // HDRI = forest.exr (el studiolight por defecto de Blender), iluminación SOLO
@@ -129,11 +156,23 @@ export function Scene() {
             environmentRotation={[0, -2.559, 0]}
           />
         ) : (
-          <Environment
+          /* ⚠️ Los presets de drei bajan el HDRI de un CDN EXTERNO. El
+             2026-08-17 ese CDN devolvió 503 y, como el error sube por el árbol
+             del Canvas, la página entera quedaba en blanco ("This page
+             couldn't load") — con TODOS los presets guardados en 'city', el
+             studio y los links de clientes se caían enteros por un servicio
+             de terceros. La barrera de abajo lo contiene: si el HDRI remoto
+             falla, se cae al forest.hdr LOCAL y el auto se ve igual de bien.
+             `key` con el entorno = reintenta el remoto al cambiar de opción. */
+          <BarreraEntorno
             key={environment}
-            preset={environment as Exclude<typeof environment, 'v5' | 'real'>}
-            environmentIntensity={1.0}
-          />
+            fallback={<Environment files="/env/forest.hdr" environmentIntensity={1.0} />}
+          >
+            <Environment
+              preset={environment as Exclude<typeof environment, 'v5' | 'real'>}
+              environmentIntensity={1.0}
+            />
+          </BarreraEntorno>
         )}
       </Suspense>
 
