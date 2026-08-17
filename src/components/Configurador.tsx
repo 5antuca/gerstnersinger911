@@ -548,14 +548,22 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
 
   // En Cargar mostrar SOLO los perfiles del vehículo activo (los del Porsche no
   // tienen campo vehicle → cuentan como 'porsche'; los del Jaguar lo traen).
-  const perfilesVehiculo = perfiles.filter((p) => (p.cfg.vehicle ?? 'porsche') === vehicle)
+  /* Orden ALFABÉTICO fijo. Sin esto el orden salía del merge nube+localStorage
+     y los chips se movían de lugar según cuál se guardó último — molesto para
+     encontrar uno. `numeric` para que "Auto 2" vaya antes que "Auto 10", y
+     `sensitivity: base` para que mayúsculas y acentos no partan el orden. */
+  const porNombre = (a: Perfil, b: Perfil) =>
+    a.name.localeCompare(b.name, 'es', { numeric: true, sensitivity: 'base' })
+  const perfilesVehiculo = perfiles
+    .filter((p) => (p.cfg.vehicle ?? 'porsche') === vehicle)
+    .sort(porNombre)
   /* El visor de cliente no tiene selector de vehículo, así que lista todos los
      presets guardados… MENOS los del Jaguar: ese modelo no se le muestra a
      clientes y solo se llega desde la pestaña Vehículos del editor (pedido
      2026-08-15). Los presets sin campo `vehicle` son del Porsche (anteriores
      a que existiera el campo). */
   const perfilesVisibles = cliente
-    ? perfiles.filter((p) => (p.cfg.vehicle ?? 'porsche') !== 'jaguar')
+    ? perfiles.filter((p) => (p.cfg.vehicle ?? 'porsche') !== 'jaguar').sort(porNombre)
     : perfilesVehiculo
   // ¿El nombre tipeado pisa un perfil que ya existe? Define el texto del botón.
   const sobreescribe = perfiles.some((p) => p.name === nombrePerfil.trim())
