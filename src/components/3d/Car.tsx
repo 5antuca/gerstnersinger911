@@ -622,6 +622,11 @@ export function Model(props: any) {
     const REAR_OUTBOARD = 0.06 // respaldos + almohadón traseros
     // Corrimiento del origen local del tablero respecto del mundo (medido).
     const DASH_OFFSET = 0.016
+    /* Distancia del par de franjas del tablero al centro del auto, en metros.
+       Corrido hacia los LATERALES a pedido (2026-08-17: de 0.40 a 0.55). La
+       banda llega hasta ±0.67, así que 0.55 deja el par bien afuera sin que
+       se caiga del borde (el par ocupa ±0.02 alrededor del centro). */
+    const DASH_X = 0.55
     // GLTFLoader saca los puntos de los nombres: 'Cube.006' → 'Cube006'.
     const TARGETS: { test: RegExp; axis: 'x' | 'y' | 'z'; centers: (bb: THREE.Box3, mesh: THREE.Mesh) => number[] }[] = [
       // Butacas delanteras: par corrido hacia afuera. Medido en vivo: en AMBAS
@@ -654,9 +659,9 @@ export function Model(props: any) {
          pedales (`Dashboard_weave_layer`). Lleva un par por lado, enfrentado a
          cada butaca, como en las fotos Singer de referencia (2026-08-17).
          Su eje local x = ancho del auto 1:1, con un offset de −0.016 respecto
-         del mundo (medido en vivo) → el centro en mundo ±0.40 cae en local
-         ±0.40 − 0.016. */
-      { test: /^Dashboard_weave_layer/, axis: 'x', centers: () => [...pair(-0.40 - DASH_OFFSET), ...pair(0.40 - DASH_OFFSET)] },
+         del mundo (medido en vivo) → el centro en mundo ±DASH_X cae en local
+         ±DASH_X − 0.016. */
+      { test: /^Dashboard_weave_layer/, axis: 'x', centers: () => [...pair(-DASH_X - DASH_OFFSET), ...pair(DASH_X - DASH_OFFSET)] },
     ]
 
     const esWeave = (m: THREE.Material | null | undefined) =>
