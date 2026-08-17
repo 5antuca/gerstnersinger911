@@ -858,15 +858,19 @@ export function Model(props: any) {
         /* Acabado del interior: 0 = original del GLB; 1 = CUERO BRILLANTE.
            Antes subía `metalness` a 0.9 y el cuero terminaba pareciendo metal
            (2026-08-17: pedido explícito de que NO refleje metalizado). El cuero
-           es un dieléctrico: su brillo sale de bajar la RUGOSIDAD, no de
-           volverlo metálico. metalness queda en 0 y el reflejo del entorno se
-           levanta un poco con envMapIntensity para que se note la lustrada. */
+           es un dieléctrico: su brillo sale de bajar la RUGOSIDAD, y nada más.
+
+           ⚠️ NO tocar `envMapIntensity`: subirlo hace que el material tome más
+           luz del HDRI y eso CORRE EL TONO del cuero al mover el slider (el
+           user lo detectó enseguida). Se deja en su valor original y se
+           reescribe siempre, para que no quede un valor viejo colgado. Con
+           solo la rugosidad, el color base no se mueve: cambia el reflejo,
+           no el tono. */
         const or = m.userData.__origRough as number
         if (m.userData.__origEnv === undefined) m.userData.__origEnv = m.envMapIntensity
-        const oe = m.userData.__origEnv as number
         m.metalness = 0
         m.roughness = or * (1 - interiorFinish) + 0.14 * interiorFinish
-        m.envMapIntensity = oe * (1 + 0.6 * interiorFinish)
+        m.envMapIntensity = m.userData.__origEnv as number
         m.needsUpdate = true
       }
       // Esfera del RELOJ CENTRAL (Rev meter.001): selector propio. 'auto' =
