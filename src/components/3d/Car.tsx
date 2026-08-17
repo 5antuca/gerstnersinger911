@@ -187,6 +187,41 @@ export function Model(props: any) {
       envMapIntensity: 1.7,
     })
     m.name = 'Paint_ext_dynamic'
+    /*
+      DOBLE CARA con la cara INTERNA oscura.
+
+      La chapa era el ÚNICO material del auto de una sola cara (25 mallas; el
+      resto del GLB ya venía a doble cara). Resultado: desde adentro del
+      habitáculo la carrocería no se dibujaba y se veía el fondo a través del
+      auto — "de un lado transparente, del otro la carrocería" (2026-08-17).
+      Se hizo visible al pasar el fondo a claro: antes el hueco se confundía
+      con el interior oscuro.
+
+      Poner DoubleSide a secas dejaría el interior del color de la PINTURA
+      (azul, o el que elija el user). Por eso el shader pinta las caras de
+      atrás con el tono de la alfombra (`Carpet_in` del GLB = #232323) y las
+      apaga: sin metal ni brillo, como chapa forrada. Las caras de adelante no
+      se tocan → la pintura exterior queda EXACTAMENTE igual que antes.
+    */
+    m.side = THREE.DoubleSide
+    m.onBeforeCompile = (shader) => {
+      shader.uniforms.uCaraInterna = { value: new THREE.Color('#232323') }
+      shader.fragmentShader =
+        'uniform vec3 uCaraInterna;\n' +
+        shader.fragmentShader
+          .replace(
+            '#include <color_fragment>',
+            '#include <color_fragment>\n  if (!gl_FrontFacing) diffuseColor.rgb = uCaraInterna;'
+          )
+          .replace(
+            '#include <roughnessmap_fragment>',
+            '#include <roughnessmap_fragment>\n  if (!gl_FrontFacing) roughnessFactor = 0.95;'
+          )
+          .replace(
+            '#include <metalnessmap_fragment>',
+            '#include <metalnessmap_fragment>\n  if (!gl_FrontFacing) metalnessFactor = 0.0;'
+          )
+    }
     return m
   }, [])
 
