@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useProgress } from '@react-three/drei'
 import { Scene } from '@/components/3d/Scene'
+import { VerEnTuEspacio } from '@/components/ui/VerEnTuEspacio'
 import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS, PRESET_DECALS, PRESET_STRIPES, PRESET_GAUGES, PRESET_VALLEYS, VEHICLES, type VehicleId } from '@/store/useConfiguratorStore'
 import Image from 'next/image'
 import Wheel from '@uiw/react-color-wheel'
@@ -631,7 +632,9 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
           />
         </div>
 
-
+        {/* Realidad aumentada en tamaño real (el AR abre en celulares). Recién
+            con el auto cargado: antes no hay nada que exportar. */}
+        {isLoaded && <VerEnTuEspacio className={`${pastillaBase} bg-[#0a0a0a]/75 border-white/10 text-white/80 hover:text-white hover:bg-white/10`} />}
       </header>
 
       {/* ── BOTTOM BAR ── la barra ES el menú: al elegir un tab se expande

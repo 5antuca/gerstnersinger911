@@ -21,6 +21,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import { useLoader, useThree } from '@react-three/fiber'
 import { GLTFLoader, DRACOLoader, KTX2Loader, GLTF } from 'three-stdlib'
 import { useConfiguratorStore, VEHICLES, JAGUAR_TITI_GLB } from '@/store/useConfiguratorStore'
+import { rigAR } from '@/lib/ar'
 
 // v11 = v10 sin las franjas de paragolpes (Bumper_stripe_F/R ocultas a pedido
 // en v5/v6/web, 2026-06-12; el material Bumper_stripe_mat se purgó con ellas)
@@ -307,6 +308,8 @@ export function Model(props: any) {
     rig.position.x = -center.x
     rig.position.y = -floorY
     rig.position.z = -center.z
+    // "Ver en tu espacio" exporta ESTE rig: ya centrado y apoyado en el piso.
+    rigAR.current = rig
   }, [scene])
 
   // PUERTAS del Porsche (feature web, v2 "hasta el paso 2"): cada puerta son
