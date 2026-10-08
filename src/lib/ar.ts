@@ -143,16 +143,7 @@ async function copiaLiviana(rig: THREE.Object3D): Promise<THREE.Object3D> {
   const simp = await simplificador()
   const copia = rig.clone(true)
   for (const m of mallasDe(copia)) {
-    if (!seSimplifica(m)) {
-      // No se simplifica, pero los indices igual bajan a 16 bits si entran.
-      const i = m.geometry.index
-      if (i && i.array instanceof Uint32Array && m.geometry.attributes.position.count < 65536) {
-        const g = m.geometry.clone()
-        g.setIndex(indicesAjustados(i.array as Uint32Array, m.geometry.attributes.position.count))
-        m.geometry = g
-      }
-      continue
-    }
+    if (!seSimplifica(m)) continue
     const original = m.geometry
     let liviana = yaSimplificadas.get(original.uuid)
     if (!liviana) {
@@ -160,6 +151,23 @@ async function copiaLiviana(rig: THREE.Object3D): Promise<THREE.Object3D> {
       yaSimplificadas.set(original.uuid, liviana)
     }
     m.geometry = liviana
+  }
+  // Pasada final de indices: hay TRES caminos por los que una pieza llega
+  // hasta aca (simplificada, excluida por material, o descartada por chica) y
+  // solo el primero pasaba por indicesAjustados. Haciendolo al final se cubren
+  // los tres de una. Las geometrias compartidas (las 4 ruedas) se convierten
+  // una sola vez.
+  const convertidas = new Map<string, THREE.BufferGeometry>()
+  for (const m of mallasDe(copia)) {
+    const i = m.geometry.index
+    if (!i || !(i.array instanceof Uint32Array)) continue
+    if (m.geometry.attributes.position.count >= 65536) continue
+    const yaEsta = convertidas.get(m.geometry.uuid)
+    if (yaEsta) { m.geometry = yaEsta; continue }
+    const g = m.geometry.clone()
+    g.setIndex(indicesAjustados(i.array as Uint32Array, m.geometry.attributes.position.count))
+    convertidas.set(m.geometry.uuid, g)
+    m.geometry = g
   }
   return copia
 }
