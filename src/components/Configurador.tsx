@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useProgress } from '@react-three/drei'
 import { Scene } from '@/components/3d/Scene'
 import { VerEnTuEspacio } from '@/components/ui/VerEnTuEspacio'
+import { precalentarAR } from '@/lib/ar'
 import { useConfiguratorStore, PRESET_COLORS, PRESET_RIMS, PRESET_INTERIORS, PRESET_ENVIRONMENTS, PRESET_DECALS, PRESET_STRIPES, PRESET_GAUGES, PRESET_VALLEYS, VEHICLES, type VehicleId } from '@/store/useConfiguratorStore'
 import Image from 'next/image'
 import Wheel from '@uiw/react-color-wheel'
@@ -275,6 +276,13 @@ export function Configurador({ cliente = false }: { cliente?: boolean } = {}) {
   const { paintColor, setPaintColor, paintFinish, setPaintFinish, decalColor, setDecalColor, decalFinish, setDecalFinish, interiorTint, setInteriorTint, interiorExact, setInteriorExact, interiorFinish, setInteriorFinish, stripeColor, setStripeColor, gaugeColor, setGaugeColor, rimColor, setRimColor, rimFinish, setRimFinish, valleyColor, setValleyColor, valleyFinish, setValleyFinish, interiorColor, setInteriorColor, environment, setEnvironment, autoRotate, toggleAutoRotate, vehicle, setVehicle, jaguarVariant, setJaguarVariant, doorsOpen, toggleDoors, setDoorsOpen } = useConfiguratorStore()
   const { progress } = useProgress()
   const isLoaded = progress >= 100
+
+  // Con el auto ya cargado, ir simplificando la malla para el AR en los huecos
+  // libres del navegador. Cuando el usuario toque "Ver en tu espacio" el
+  // trabajo pesado ya va a estar hecho. Ver precalentarAR en lib/ar.ts.
+  useEffect(() => {
+    if (isLoaded) precalentarAR()
+  }, [isLoaded])
   const [activeTab, setActiveTab] = useState<null | 'vehiculos' | 'pintura' | 'interior' | 'llantas' | 'luz' | 'cargar' | 'guardar'>(null)
   // Teléfono apaisado (viewport bajo): compacta el bottom bar para no tapar el auto.
   const compact = useMediaQuery('(max-height: 480px)')

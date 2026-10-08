@@ -96,31 +96,109 @@ async function geometriaLiviana(
     }
     salida.setAttribute(nombre, new THREE.BufferAttribute(arr, a.itemSize, a.normalized))
   }
-  salida.setIndex(new THREE.BufferAttribute(nuevos, 1))
+  salida.setIndex(indicesAjustados(nuevos, unicos))
   return salida
 }
 
-async function copiaLiviana(rig: THREE.Object3D): Promise<THREE.Object3D> {
+/*
+  Indices en 16 bits cuando la pieza tiene menos de 65.536 vertices.
+
+  El exportador los escribe SIEMPRE en 32 bits: eran 10,3 MB de los 26,2 de
+  geometria del auto entero, y casi ninguna pieza necesita tanto rango. Pasar a
+  16 bits es exactamente la misma malla ocupando la mitad — no se pierde ni un
+  triangulo. (2026-10-08)
+*/
+function indicesAjustados(idx: Uint32Array, vertices: number): THREE.BufferAttribute {
+  if (vertices < 65536) return new THREE.BufferAttribute(Uint16Array.from(idx), 1)
+  return new THREE.BufferAttribute(idx, 1)
+}
+
+/*
+  Cache de geometrias ya simplificadas, a nivel modulo.
+
+  Simplificar es lo caro del proceso, y la geometria NO depende de la
+  configuracion: cambiar color, acabado o abrir puertas no mueve un vertice.
+  Guardandolas, la segunda vez que alguien abre el AR (y cualquier cambio de
+  color despues) ya no paga ese costo. La clave es el uuid de la geometria
+  original, asi que cambiar de vehiculo entra solo como claves nuevas.
+  Las 4 ruedas comparten geometria: se simplifica una vez para las cuatro.
+*/
+const yaSimplificadas = new Map<string, THREE.BufferGeometry>()
+
+async function simplificador() {
   const { MeshoptSimplifier } = await import('meshoptimizer')
   await MeshoptSimplifier.ready
-  const copia = rig.clone(true)
-  // Las 4 ruedas comparten geometría: se simplifica UNA vez y se reusa.
-  const hechas = new Map<string, THREE.BufferGeometry>()
-  const mallas: THREE.Mesh[] = []
-  copia.traverseVisible((o) => {
-    if ((o as THREE.Mesh).isMesh) mallas.push(o as THREE.Mesh)
+  return MeshoptSimplifier
+}
+
+function mallasDe(rig: THREE.Object3D): THREE.Mesh[] {
+  const out: THREE.Mesh[] = []
+  rig.traverseVisible((o) => {
+    if ((o as THREE.Mesh).isMesh) out.push(o as THREE.Mesh)
   })
-  for (const m of mallas) {
-    if (!seSimplifica(m)) continue
+  return out
+}
+
+async function copiaLiviana(rig: THREE.Object3D): Promise<THREE.Object3D> {
+  const simp = await simplificador()
+  const copia = rig.clone(true)
+  for (const m of mallasDe(copia)) {
+    if (!seSimplifica(m)) {
+      // No se simplifica, pero los indices igual bajan a 16 bits si entran.
+      const i = m.geometry.index
+      if (i && i.array instanceof Uint32Array && m.geometry.attributes.position.count < 65536) {
+        const g = m.geometry.clone()
+        g.setIndex(indicesAjustados(i.array as Uint32Array, m.geometry.attributes.position.count))
+        m.geometry = g
+      }
+      continue
+    }
     const original = m.geometry
-    let liviana = hechas.get(original.uuid)
+    let liviana = yaSimplificadas.get(original.uuid)
     if (!liviana) {
-      liviana = await geometriaLiviana(original, MeshoptSimplifier)
-      hechas.set(original.uuid, liviana)
+      liviana = await geometriaLiviana(original, simp)
+      yaSimplificadas.set(original.uuid, liviana)
     }
     m.geometry = liviana
   }
   return copia
+}
+
+/*
+  Adelantar el trabajo pesado mientras el usuario mira el auto.
+
+  Se simplifica de a UNA pieza por hueco libre del navegador
+  (requestIdleCallback): si el usuario rota o cambia un color, el configurador
+  sigue fluido y esto espera. Para cuando toca "Ver en tu espacio", la mayoria
+  ya esta en el cache y el export arranca casi de una.
+*/
+export function precalentarAR(): void {
+  if (typeof window === 'undefined') return
+  const idle = (window as unknown as {
+    requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void
+  }).requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 300))
+
+  void (async () => {
+    const rig = rigAR.current
+    if (!rig) return
+    const simp = await simplificador()
+    const pendientes = mallasDe(rig).filter(
+      (m) => seSimplifica(m) && !yaSimplificadas.has(m.geometry.uuid),
+    )
+    const siguiente = () => {
+      const m = pendientes.shift()
+      if (!m) return
+      if (!yaSimplificadas.has(m.geometry.uuid)) {
+        void geometriaLiviana(m.geometry, simp).then((g) => {
+          yaSimplificadas.set(m.geometry.uuid, g)
+          idle(siguiente, { timeout: 2000 })
+        })
+      } else {
+        idle(siguiente, { timeout: 2000 })
+      }
+    }
+    idle(siguiente, { timeout: 2000 })
+  })()
 }
 
 export async function exportarAutoGLB(): Promise<Blob> {
